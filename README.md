@@ -47,3 +47,7 @@ To retrieve the atoms, use ```bt_get/2```:
 ?- bt_get(a, X).
 X = a;
 ```
+
+Finally, to close the tree and save all the data to disk:
+
+```?- bt_close.```
