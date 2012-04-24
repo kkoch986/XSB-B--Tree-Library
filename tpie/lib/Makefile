@@ -1,0 +1,29 @@
+# Makefile for the TPIE library.
+# $Id: Makefile.in,v 1.6 2002/03/14 20:12:23 tavi Exp $
+
+LIBRARY = libtpie.a
+LIBSRCPATH = ./src/
+RANLIB = ranlib
+
+export
+
+# Public targets.
+
+all: $(LIBRARY)
+
+clean:
+	rm -f $(LIBSRCPATH)/Makefile.depend; \
+	touch $(LIBSRCPATH)/Makefile.depend
+	$(MAKE) -C $(LIBSRCPATH) $@
+
+distclean: 
+	-rm -f $(LIBRARY)
+	$(MAKE) -C $(LIBSRCPATH) $@
+
+# Private targets.
+
+$(LIBRARY): $(LIBSRCPATH)$(LIBRARY)
+	cp $< $@
+	$(RANLIB) $@
+
+.PHONY : clean all
