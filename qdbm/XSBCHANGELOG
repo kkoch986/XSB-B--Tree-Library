@@ -1,0 +1,34 @@
+#CHANGELOG
+
+##Preface
+These are changes that I have made to the xsb system as part of my work on indexing and B+ Trees.
+
+##DI (Just In Time Indexing)
+Although this project is not completed, there is the implementation of a potentially useful instruction to catch the fallthrough of a SOB indexing instruction.
+
+Essentially, this can tell you where to place an index if you do not already have one in dynamically asserted code.
+
+###Installing
+
+To Install, perform the following modifications (line numbers according to most recent XSB build, unmodified ( [3.3.6, found here](http://xsb.sourceforge.net/downloads/XSB336.tar.gz)) )
+
+... todo ....
+
+##B+ Tree Library
+
+Still a major work in progress, using this file to keep track of changes to XSB system files as i make them.
+
+1. __emu/io_builtins_xsb.c__ \[Line 836\]
+
+Change:
+
+`} else return (Cell)NULL;`
+
+To:
+
+	} else if(code == 3) {/** B+ Trees **/
+
+  	}
+  	else return (Cell)NULL;
+
+
