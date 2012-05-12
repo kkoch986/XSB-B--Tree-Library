@@ -8,7 +8,7 @@
 
 
 # Generic settings
-SHELL = /bin/sh
+SHELL = /bin/bash
 
 # Packaging
 PACKAGE = qdbm

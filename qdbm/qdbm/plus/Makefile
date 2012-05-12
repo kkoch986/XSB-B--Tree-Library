@@ -8,7 +8,7 @@
 
 
 # Generic settings
-SHELL = /bin/sh
+SHELL = /bin/bash
 srcdir = .
 
 
@@ -46,7 +46,7 @@ CPPFLAGS =  -I$(srcdir) -I$(srcdir)/.. -I$(MYHEADDIR) \
   -DPIC=1 -D_THREAD_SAFE=1 -D_REENTRANT=1 -DNDEBUG
 CXXFLAGS = -Wall -ansi -pedantic -fsigned-char -fPIC -O2 -fno-strict-aliasing 
 LD = /usr/bin/ld
-LIBS = -lqdbm -lstdc++ -liconv -lbz2 -llzo2 -lz -lpthread -lc 
+LIBS = -lqdbm -lstdc++ -lz -lpthread -lrt -lc 
 LIBLDFLAGS =  -L. -L$(srcdir)/.. -L$(MYLIBDIR) \
   -L$(HOME)/lib -L/usr/local/lib $(LIBS)
 LDFLAGS =  -L. -L$(srcdir)/.. -L$(MYLIBDIR) \
