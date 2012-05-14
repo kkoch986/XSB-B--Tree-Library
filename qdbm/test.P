@@ -1,0 +1,36 @@
+% convert list of ascii chars into list of words
+
+
+:- import tphrase_set_string/1, tphrase_string_length/1 from dcg.
+:- import scan/3, set_scan_pars/1 from stdscan.
+
+
+printc :- 'C'(X, Y, _), write(X), write(': '), writeln(Y), fail; true.
+
+scan_file(Filename,Length) :-
+	(atom(Filename)
+	 ->	expand_filename(Filename,Afile),
+		seeing(Ofile),
+		see(Afile),
+		file_to_string(String,[]),
+		seen,
+		see(Ofile),
+		set_string(String,Length)
+	 ;	writeln('Error in file name.'),
+		writeln('Did you forget to put single quotes around the filename?')
+	).
+
+file_to_string(Li,Lo) :-
+	get0(C),
+	(C < 0	% end-of-file
+	 ->	Li = Lo
+	 ;	Li = [C|Lm],
+		file_to_string(Lm,Lo)
+	).
+
+set_string(String,Length) :-
+	abolish_all_tables,
+	set_scan_pars([no_whitespace]),
+	scan(String,10, Words),
+	tphrase_set_string(Words),
+	tphrase_string_length(Length).

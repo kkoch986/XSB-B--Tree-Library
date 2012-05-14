@@ -7,7 +7,7 @@ XSB Version:	   3.3.6
 Code name:	   Pignoletto
 Release date:	   2012-01-02
 Configuration:	   i386-apple-darwin10.8.0
-Installation date: Mon May 14 14:55:08 EDT 2012
+Installation date: Mon May 14 15:46:09 EDT 2012
 
   Build process is looking for XSB sources in:	  /Users/kenkoch/research/qdbm/XSB
   XSB should be installed in:			  /Users/kenkoch/research/qdbm/XSB
@@ -57,76 +57,10 @@ Installation date: Mon May 14 14:55:08 EDT 2012
 -e 
 Compiling XSB with gcc using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
 
--e 	[gcc] main_xsb.c
--e 	[gcc] auxlry.c
--e 	[gcc] biassert.c
--e 	[gcc] builtin.c using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
--e 	[gcc] cinterf.c
--e 	[gcc] conc_compl.c
--e 	[gcc] debug_xsb.c
--e 	[gcc] dis.c
--e 	[gcc] dynload.c
--e 	[gcc] dynamic_stack.c
--e 	[gcc] deadlock.c
--e 	[gcc] emuloop.c using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
--e 	[gcc] error_xsb.c
--e 	[gcc] findall.c
--e 	[gcc] function.c
--e 	[gcc] hash_xsb.c
--e 	[gcc] hashtable_xsb.c
--e 	[gcc] heap_xsb.c
--e 	[gcc] init_xsb.c
--e 	[gcc] inst_xsb.c
 -e 	[gcc] io_builtins_xsb.c
 io_builtins_xsb.c: In function ‘fmt_read’:
 io_builtins_xsb.c:588: warning: format not a string literal and no format arguments
 io_builtins_xsb.c:666: warning: format not a string literal and no format arguments
-io_builtins_xsb.c: In function ‘read_canonical_return_var’:
-io_builtins_xsb.c:840: warning: control reaches end of non-void function
--e 	[gcc] loader_xsb.c using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
--e 	[gcc] memory_xsb.c
-memory_xsb.c: In function ‘tcpstack_realloc’:
-memory_xsb.c:379: warning: ‘new_trail’ may be used uninitialized in this function
--e 	[gcc] orient_xsb.c
--e 	[gcc] pathname_xsb.c
--e 	[gcc] psc_xsb.c
--e 	[gcc] random_xsb.c
--e 	[gcc] remove_unf.c
--e 	[gcc] residual.c
--e 	[gcc] rw_lock.c
--e 	[gcc] scc_xsb.c
--e 	[gcc] slgdelay.c
--e 	[gcc] socket_xsb.c
--e 	[gcc] string_xsb.c
--e 	[gcc] storage_xsb.c
--e 	[gcc] struct_manager.c
--e 	[gcc] sub_delete.c
--e 	[gcc] subp.c
--e 	[gcc] system_xsb.c
--e 	[gcc] table_stats.c
--e 	[gcc] tables.c
--e 	[gcc] thread_xsb.c
--e 	[gcc] timer_xsb.c
--e 	[gcc] token_xsb.c
--e 	[gcc] tr_utils.c using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
--e 	[gcc] trace_xsb.c
--e 	[gcc] trie_lookup.c
--e 	[gcc] trie_search.c
--e 	[gcc] tries.c
-tries.c: In function ‘get_lastnode_cs_retskel’:
-tries.c:2470: warning: cast from pointer to integer of different size
--e 	[gcc] tst_insert.c
--e 	[gcc] tst_retrv.c
--e 	[gcc] tst_unify.c
--e 	[gcc] tst_utils.c
--e 	[gcc] varstring.c
--e 	[gcc] ubi_BinTree.c
--e 	[gcc] ubi_SplayTree.c
--e 	[gcc] hashtable.c
--e 	[gcc] hashtable_itr.c
--e 	[gcc] url_encode.c
--e 	[gcc] incr_xsb.c
--e 	[gcc] call_graph_xsb.c
 
 Making XSB executable /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb 
 
