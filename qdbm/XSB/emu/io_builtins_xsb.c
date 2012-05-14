@@ -833,9 +833,12 @@ Cell read_canonical_return_var(CTXTdeclc int code) {
     op1 = cell(clref_val(op)+1);
     XSB_Deref(op1);
     return op1;
-  } else if(code == 3) {/** B+ Trees **/
-    
-  }
+  } else if(code == 3) { /** B+ Trees (bt_get/3) **/
+      return (Cell)ptoc_tag(CTXTc 3);
+  } 
+  else if(code == 4) { /** B+ Trees (bt_getnext/2) **/
+      return (Cell)ptoc_tag(CTXTc 2);
+  } 
   else return (Cell)NULL;
 }
 
@@ -1179,7 +1182,7 @@ Integer read_canonical_term(CTXTdeclc FILE *filep, STRFILE *instr, int return_lo
 	}
       case TK_EOF:
 	free_term_buffer();
-	if (isnonvar(prologvar)) 
+	if (isnonvar(prologvar) && return_location_code != 3 && return_location_code != 4)
 	  xsb_abort("[READ_CANONICAL] Argument must be a variable");
 	unify(CTXTc prologvar,makestring(string_find("end_of_file",1)));
 	return 0;
@@ -1194,11 +1197,18 @@ Integer read_canonical_term(CTXTdeclc FILE *filep, STRFILE *instr, int return_lo
 	return read_can_error(CTXTc filep,instr,prevchar,prologvar,findall_chunk_index);
 
       if (opstk[0].typ != TK_VAR) {  /* if a variable, then a noop */
-	if (isnonvar(prologvar)) 
+	if (isnonvar(prologvar) && return_location_code != 3 && return_location_code != 4)
 	  xsb_abort("[READ_CANONICAL] Argument must be a variable");
 	term = opstk[0].op;
 	
 	check_glstack_overflow(5, pcreg, (size+1)*sizeof(Cell)) ;
+
+  /* For the B+ Tree Library, we are only interested in unification of the matched term */
+  if(return_location_code == 3 || return_location_code == 4)
+  {
+      return unify(CTXTc prologvar, term);
+  }
+  
 	/* get return location again, in case it moved, whole reasong for r_c_r_v */
 	prologvar = read_canonical_return_var(CTXTc return_location_code); 
 	gl_bot = (CPtr)glstack.low; gl_top = (CPtr)glstack.high;
