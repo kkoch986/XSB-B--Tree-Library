@@ -1,0 +1,22 @@
+
+%% Load the C Library
+%% ?- [bt].
+
+:- import bt_init/3 from bt.
+:- import bt_close/1 from bt.
+:- import bt_insert/2 from bt.
+:- import bt_get/3 from bt.
+:- import bt_getl/3 from bt.
+:- import bt_getnext/2 from bt.
+
+%% This function will initialize a btree
+btinit(Pred/Arity, Argument, Handle) :- bt_init(Pred/Arity, Argument, Handle).
+
+%% Close a B+ Tree.
+btclose(Handle) :- bt_close(Handle).
+
+%% Insert a Term into a B+ Tree
+btinsert(Handle, Term) :- bt_insert(Handle, Term).
+
+%% Retrieve a single term
+btget(Handle, Key, Value) :- bt_get(Handle, Key, Value).

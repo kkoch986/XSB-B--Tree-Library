@@ -33,12 +33,25 @@ struct IndexTable
 	char *predname;
 	int arity;
 	int argnum;
+	int open;
+};
+
+struct ActiveLookupListNode
+{
+	int index;
+	CBLIST *list;
+	struct ActiveLookupListNode *next;
+	struct ActiveLookupListNode *prev;
 };
 
 // pointer to our B+ trees.
 static struct IndexTable *villas;
 static int currentSize = 10;
 static int nextIndex = 0;
+
+// pointer to active CBLISTS being used to return results.
+static struct ActiveLookupListNode *cblHead;
+static int nextCBLIndex = 0;
 
 /**
  * bt_init/3. 
@@ -89,11 +102,13 @@ DllExport int call_conv bt_init(CTXTdecl)
 	villas[nextIndex].arity = arity;
 	villas[nextIndex].predname = predname;
 	villas[nextIndex].argnum = index_arg;
+	villas[nextIndex].open = 0;
 	/* open the database */
 	if(!(villas[nextIndex].villa = vlopen(db_name, VL_OWRITER | VL_OCREAT, VL_CMPLEX))){
 		fprintf(stderr, "vlopen: %s\n", dperrmsg(dpecode));
 		return FALSE;
 	}
+	villas[nextIndex].open = 1;
 
 	int size = vlrnum(villas[nextIndex].villa);
 	printf("B+ Tree (%s) Size: %i\n", db_name, size);
@@ -111,12 +126,12 @@ DllExport int call_conv bt_init(CTXTdecl)
  * The B+ Tree must match on predicate symbol and arity and will be indexed on 
  * the same argument as others in that table.
  *
- * bt_insert(+Term, +Handle).
+ * bt_insert(+Handle, +Term).
  **/
 DllExport int call_conv bt_insert(CTXTdecl)
 {
 	// Find the IndexTable associated with the handle.
-	prolog_term handle_term = reg_term(CTXTdecl 2);
+	prolog_term handle_term = reg_term(CTXTdecl 1);
 	if(!is_int(handle_term))
 	{
 		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
@@ -134,7 +149,7 @@ DllExport int call_conv bt_insert(CTXTdecl)
 	struct IndexTable handle = villas[handle_index];
 
 	// now confirm the pred name and arity for this predicate
-	prolog_term value = reg_term(CTXTdeclc 1);
+	prolog_term value = reg_term(CTXTdeclc 2);
 
 	if(!is_functor(value))
 	{
@@ -182,8 +197,8 @@ DllExport int call_conv bt_insert(CTXTdecl)
 	// -- DEBUG -- PRINT OUT THE TERM --------------
 	// ---------------------------------------------
 	printf("Insert Term: (Key: %s, Value: %s)\n", key_str, val_str);
-	int size = vlrnum(handle.villa);
-	printf("B+ Tree (%s) Size: %i\n", handle.predname, size);
+	//int size = vlrnum(handle.villa);
+	//printf("B+ Tree (%s) Size: %i\n", handle.predname, size);
 	// ---------------------------------------------
 	// ---------------------------------------------
 
@@ -193,7 +208,7 @@ DllExport int call_conv bt_insert(CTXTdecl)
 
 DllExport int call_conv bt_close(CTXTdecl) 
 {
-	prolog_term handle_term = reg_term(CTXTdecl 2);
+	prolog_term handle_term = reg_term(CTXTdecl 1);
 	if(!is_int(handle_term))
 	{
 		fprintf(stderr, "Close Error: Handle Non-Integer Type.\n");
@@ -209,14 +224,15 @@ DllExport int call_conv bt_close(CTXTdecl)
 	}
 
 	struct IndexTable handle = villas[handle_index];
-
-	
 	
 	/* close the database */
 	if(!vlclose(handle.villa)){
 		fprintf(stderr, "vlclose: %s\n", dperrmsg(dpecode));
 		return FALSE;
 	}
+
+	// mark this index table as closed.
+	handle.open = 0;
 
 	return TRUE;
 }
@@ -267,16 +283,178 @@ char *pt2dbname(char *predname, int arity, int arg)
 	return buff;
 }
 
+/**
+ *	bt_get/3. Used to get a single value from a tree
+ *  bt_Get(+Handle, +Key, -Value)
+ */
+DllExport int call_conv bt_get(CTXTdecl)
+{
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int tree_index = p2c_int(tree_term);
+	// check that we can find an IndexTable in this range
+	if(tree_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable tree = villas[tree_index];
+
+	// the second argument is the key
+	prolog_term key_term = reg_term(CTXTdecl 2);
+	char *key_str = pt2str(key_term);
+
+	// perform the lookup
+	int valsize;
+	char *value = vlget(tree.villa, key_str, -1, &valsize);
+	STRFILE strfile;
+	strfile.strcnt = valsize;
+	strfile.strptr = value;
+
+	printf("Found Value: %s\n", value);
+
+	// unify with the return argument
+	return read_canonical_term(CTXTdecl NULL, &strfile, 3);
+}
+
+/**
+ *	bt_getl/3. Used to get a handle to a list of values from a tree
+ *  bt_Get(+TreeHandle, +Key, -ValueHandle)
+ */
+DllExport int call_conv bt_getl(CTXTdecl)
+{
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int tree_index = p2c_int(tree_term);
+	// check that we can find an IndexTable in this range
+	if(tree_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable tree = villas[tree_index];
+
+	// the second argument is the key
+	prolog_term key_term = reg_term(CTXTdecl 2);
+	char *key_str = pt2str(key_term);
+
+	// perform the lookup
+	CBLIST *value = vlgetlist(tree.villa, key_str, -1);
+
+	// wrap this CBList into a node and return its index
+	struct ActiveLookupListNode *node = malloc(sizeof(struct ActiveLookupListNode));
+	node->index = nextCBLIndex++;
+	node->next = NULL;
+	node->list = value;
+
+	if(cblHead != NULL)
+	{
+		cblHead->next = node;
+		node->prev = cblHead;
+	}
+	
+	cblHead = node;
+	
+	// return the result in Handle
+	prolog_term handle = reg_term(CTXTdecl 3);
+	c2p_int(CTXTdecl cblHead->index, handle);
+
+	return TRUE;
+}
+
+/**
+ * bt_getnext/2. Retrieve the next value from the CBList handle.
+ * bt_getnext(+CBLHandle, -Value).
+ **/
+DllExport int call_conv bt_getnext(CTXTdecl)
+{
+	// First get the handle and find if that CBL still exists.
+	prolog_term cbl_term = reg_term(CTXTdecl 1);
+	if(!is_int(cbl_term))
+	{
+		fprintf(stderr, "Get Next Error: CBL Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int handle = p2c_int(cbl_term);
+
+	// search for the cbl term
+	struct ActiveLookupListNode *traveller = cblHead;
+
+	int found = 0;
+	while(traveller != NULL)
+	{
+		if(traveller->index == handle)
+		{
+			found = 1;
+			break ;
+		}
+
+		if(traveller->prev == NULL) break ;
+		traveller = traveller->prev;
+	}
+
+	if(found == 0)
+	{
+		printf("Unable to find CBL %i\n", handle);
+		return FALSE;
+	}
+
+	printf("FOUND CBL: %i\n", traveller->index);
+
+	// retrieve the next value from the CBL
+	char *value = cblistpop(traveller->list, NULL);
+
+	if(value == NULL)
+	{
+		printf("List empty.\n");
+		// this list is now empty, remove it
+		if(traveller->prev != NULL)
+			traveller->prev->next = traveller->next;
+		if(traveller->next != NULL)
+			traveller->next->prev = traveller->prev;
+
+		if(cblHead == traveller)
+			cblHead = traveller->prev;
+
+		free(traveller);
+
+		return FALSE;
+	}
+
+	// unify the string and return
+	STRFILE strfile;
+	strfile.strcnt = strlen(value);
+	strfile.strptr = value;
+
+	return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+}
+
+
 
 DllExport int call_conv bt_test(CTXTdecl)
 {
 	STRFILE strfile;
 	
-	char *st = "a(b,c)";
+	char *st = "[a(b,c), a(c,d)]";
 	strfile.strcnt = strlen(st);
 	strfile.strptr = st;
 
-	read_canonical_term(CTXTdecl NULL, &strfile, 1);
+	read_canonical_term(CTXTdecl NULL, &strfile, 3);
 	return TRUE;
 }
 
