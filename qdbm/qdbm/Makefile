@@ -8,7 +8,7 @@
 
 
 # Generic settings
-SHELL = /bin/bash
+SHELL = /bin/sh
 srcdir = .
 
 SUBDIRS = plus java perl ruby cgi lab bros
@@ -56,7 +56,7 @@ CPPFLAGS =  -I$(srcdir) -I$(MYHEADDIR) \
   -D_XOPEN_SOURCE_EXTENDED=1 -D_GNU_SOURCE=1 -D__EXTENSIONS__=1 -D_HPUX_SOURCE=1 \
   -D_POSIX_MAPPED_FILES=1 -D_POSIX_SYNCHRONIZED_IO=1 \
   -DPIC=1 -D_THREAD_SAFE=1 -D_REENTRANT=1 -DNDEBUG
-CFLAGS = -Wall -pedantic -fPIC -fsigned-char -O3 -fomit-frame-pointer -fforce-addr -minline-all-stringops
+CFLAGS = -Wall -pedantic -fPIC -fsigned-char -O3 -fomit-frame-pointer -fforce-addr 
 LD = /usr/bin/ld
 LIBS = -lqdbm -lc 
 LIBLDFLAGS =  -L. -L$(MYLIBDIR) -L$(HOME)/lib -L/usr/local/lib -lc 

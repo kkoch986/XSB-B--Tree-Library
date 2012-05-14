@@ -1,6 +1,8 @@
-# CHANGELOG
+CHANGELOG
+=========
 
 ## Preface
+
 These are changes that I have made to the xsb system as part of my work on indexing and B+ Trees. - Ken Koch
 
 ## DI (Just In Time Indexing)
