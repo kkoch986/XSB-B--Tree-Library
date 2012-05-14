@@ -18,5 +18,16 @@ btclose(Handle) :- bt_close(Handle).
 %% Insert a Term into a B+ Tree
 btinsert(Handle, Term) :- bt_insert(Handle, Term).
 
-%% Retrieve a single term
-btget(Handle, Key, Value) :- bt_get(Handle, Key, Value).
+%% Non-Deterministically find terms that match the key exactly.
+btget(TreeHandle, Key, Value) :- 
+	bt_getl(TreeHandle, Key, AnswerHandle),
+	btgetnext(AnswerHandle, Value).
+
+btgetnext(AnswerHandle, Value) :- 
+	bt_getnext(AnswerHandle, Value0),
+	(
+		Value = Value0 
+		; btgetnext(AnswerHandle, Value)
+	).
+
+%% TODO: Prefix and Range queries.
