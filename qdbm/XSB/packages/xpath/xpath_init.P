@@ -28,5 +28,5 @@
 :- export xpath_info/2.
 
 xpath_info(support, 'no').
-xpath_info(ccflags, '-I/usr/include/libxml2').
+xpath_info(ccflags, 'ERROR').
 xpath_info(ldflags, 'ERROR').

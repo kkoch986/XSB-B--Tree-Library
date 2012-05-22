@@ -9,6 +9,7 @@
 /* context.h is necessary for the type of a thread context. */
 #include "context.h"
 #include "cinterf.h"
+#include "cell_xsb.h"
 #include "io_builtins_xsb.h"
 #ifdef WIN_NT
 #define XSB_DLL
@@ -23,8 +24,11 @@
 #define DBNAME "xsbdb"
 
 // predefine functions
-char *pt2str(prolog_term term);
+//char *pt2str(prolog_term term);
 char *pt2dbname(char *predname, int arity, int arg);
+
+// stats regarding prefix or range query.
+static const int NOT_INITIALIZED = 10, PREFIX_MODE = 1, RANGE_MODE = 2;
 
 // a structure to hold information about the b+ tree table.
 struct IndexTable
@@ -34,6 +38,11 @@ struct IndexTable
 	int arity;
 	int argnum;
 	int open;
+
+	// stats for prefix and range queries
+	int cursorMode;
+	char *prefix;
+	char *upperBound;
 };
 
 struct ActiveLookupListNode
@@ -67,7 +76,7 @@ DllExport int call_conv bt_init(CTXTdecl)
 	if(villas == NULL)
 	{
 		villas = malloc(sizeof(struct IndexTable) * currentSize);
-		printf("First Initialization\n");
+		//printf("First Initialization\n");
 	}
 	if(nextIndex >= currentSize)
 	{
@@ -103,6 +112,7 @@ DllExport int call_conv bt_init(CTXTdecl)
 	villas[nextIndex].predname = predname;
 	villas[nextIndex].argnum = index_arg;
 	villas[nextIndex].open = 0;
+	villas[nextIndex].cursorMode = NOT_INITIALIZED;
 	/* open the database */
 	if(!(villas[nextIndex].villa = vlopen(db_name, VL_OWRITER | VL_OCREAT, VL_CMPLEX))){
 		fprintf(stderr, "vlopen: %s\n", dperrmsg(dpecode));
@@ -153,7 +163,8 @@ DllExport int call_conv bt_insert(CTXTdecl)
 
 	if(!is_functor(value))
 	{
-		fprintf(stderr, "Insert Error: Insert Argument Is Not A Functor.\n");
+		fprintf(stderr, 
+			"Insert Error: Insert Argument Is Not A Functor.\n");
 		return FALSE;
 	}
 
@@ -184,19 +195,31 @@ DllExport int call_conv bt_insert(CTXTdecl)
 
 	// Now do the actual insert...
 	prolog_term key = p2p_arg(value, indexon);
-	char *val_str = pt2str(value);
-	char *key_str = pt2str(key);
+	char *buff = canonical_term(CTXTdecl key, 1);
+	int size = cannonical_term_size(CTXTdecl) + 1;
+	char *key_str = malloc(sizeof(char) * size);
+	strncpy(key_str, buff, size);
 
-	if(!vlput(handle.villa, key_str, -1, val_str, -1, VL_DDUP))
+	buff = canonical_term(CTXTdecl value, 1);
+	size = cannonical_term_size(CTXTdecl) + 1;
+	char *val_str = malloc(sizeof(char) * size);
+	strncpy(val_str, buff, size);
+	//char *val_str = pt2str(value);
+	//char *key_str = pt2str(key);
+
+	if(!vlput(handle.villa, key_str, -1, val_str, -1, VL_DDUPR))
 	{
     	fprintf(stderr, "Insert Error (DB): %s\n", dperrmsg(dpecode));
     	return FALSE;
 	}
 
+	//free(val_str);
+	//free(key_str);
+
 	// ---------------------------------------------
 	// -- DEBUG -- PRINT OUT THE TERM --------------
 	// ---------------------------------------------
-	printf("Insert Term: (Key: %s, Value: %s)\n", key_str, val_str);
+	//printf("Insert Term: (Key: %s, Value: %s)\n", key_str, val_str);
 	//int size = vlrnum(handle.villa);
 	//printf("B+ Tree (%s) Size: %i\n", handle.predname, size);
 	// ---------------------------------------------
@@ -237,41 +260,58 @@ DllExport int call_conv bt_close(CTXTdecl)
 	return TRUE;
 }
 
-
-/** note: buff is created with malloc here, may need to be freed? */
-char *pt2str(prolog_term entry)
+/**
+ * bt_drop/2.
+ * This will delete a database file.
+ * CAll with: bt_drop(+Predname/Arity, +IndexOn).
+ **/
+DllExport int call_conv bt_drop(CTXTdecl) 
 {
-	if(is_attv(entry))
-		printf("Attrv");
-	if(is_functor(entry))
+	/* compute the DB name */
+	/* as db_predname_arity_indexargnum */
+	prolog_term predicate = reg_term(CTXTdecl 1);
+	prolog_term indexon = reg_term(CTXTdecl 2);
+	int index_arg = p2c_int(indexon);
+	// TODO: Sanity checking on input args
+	char *predname = p2c_string(p2p_arg(predicate, 1));
+	int arity = p2c_int(p2p_arg(predicate, 2));
+
+	if(index_arg > arity)
 	{
-		char *buff = malloc(sizeof(char) * 1000);
-		int arity = p2c_arity(entry);
-		char *functor = p2c_functor(entry);
-		sprintf(buff, "%s(", functor);		
-			int x;
-			for(x = 1 ; x <= arity ; x++)
-			{
-				strcat(buff, pt2str(p2p_arg(entry, x)));
-				if(x != arity) buff = strcat(buff, ",");
-			}
-		buff = strcat(buff, ")");
-		return buff;
-	}
-	if(is_string(entry))
-		return p2c_string(entry);
-	if(is_list(entry))
-		printf("list");
-	if(is_var(entry))
-		printf("VAR");
-	if(is_int(entry))
-	{
-		char *buff = malloc(sizeof(char) * 12);
-		sprintf(buff, "%i", (int)p2c_int(entry));
-		return buff;
+		fprintf(stderr, "Error: Index on Argument Number Greater Than Predicate Arity (Arity %i, index on: %i).\n", arity, index_arg);
+		return FALSE;
 	}
 
-	return "";
+	char *db_name = pt2dbname(predname, arity, index_arg);
+
+	// Do a quick search to make sure this table was not opened in
+	// a handle
+	int x ;
+	for(x = 0; x < nextIndex; x++)
+	{
+		struct IndexTable i = villas[x];
+		if(i.open == TRUE)
+		{
+			if(strcmp(i.predname, predname) == 0)
+			{
+				if(i.arity == arity && i.argnum == indexon)
+				{
+					// match, fails
+					printf("This Tree has an open handle(%i), please close all handles before dropping the tree.\n", x);
+					return FALSE;
+				}
+			}
+		}
+	}
+
+	// actually drop the tree.
+	if(vlremove(db_name))
+		return TRUE;
+	else
+	{
+		printf("WARNING: Unable to drop tree (%s), maybe it is missing?\n", db_name);
+		return TRUE;
+	}
 }
 
 
@@ -308,8 +348,11 @@ DllExport int call_conv bt_get(CTXTdecl)
 	struct IndexTable tree = villas[tree_index];
 
 	// the second argument is the key
-	prolog_term key_term = reg_term(CTXTdecl 2);
-	char *key_str = pt2str(key_term);
+	prolog_term key = reg_term(CTXTdecl 2);
+	char *buff = canonical_term(CTXTdecl key, 1);
+	int size = cannonical_term_size(CTXTdecl) + 1;
+	char *key_str = malloc(sizeof(char) * size);
+	strncpy(key_str, buff, size);
 
 	// perform the lookup
 	int valsize;
@@ -349,8 +392,11 @@ DllExport int call_conv bt_getl(CTXTdecl)
 	struct IndexTable tree = villas[tree_index];
 
 	// the second argument is the key
-	prolog_term key_term = reg_term(CTXTdecl 2);
-	char *key_str = pt2str(key_term);
+	prolog_term key = reg_term(CTXTdecl 2);
+	char *buff = canonical_term(CTXTdecl key, 1);
+	int size = cannonical_term_size(CTXTdecl) + 1;
+	char *key_str = malloc(sizeof(char) * size);
+	strncpy(key_str, buff, size);
 
 	// perform the lookup
 	CBLIST *value = vlgetlist(tree.villa, key_str, -1);
@@ -414,7 +460,7 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 		return FALSE;
 	}
 
-	printf("FOUND CBL: %i\n", traveller->index);
+	//printf("FOUND CBL: %i\n", traveller->index);
 
 	// retrieve the next value from the CBL
 	char *value = cblistpop(traveller->list, NULL);
@@ -432,7 +478,6 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 			cblHead = traveller->prev;
 
 		free(traveller);
-
 		return FALSE;
 	}
 
@@ -444,20 +489,114 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 	return read_canonical_term(CTXTdecl NULL, &strfile, 4);
 }
 
-
-
-DllExport int call_conv bt_test(CTXTdecl)
+/*********************************************************/
+/** RANGE/PREFIX Queries		**************************/
+/*********************************************************/
+/** bt_prefix_jump/2.
+ ** Jumps the tree cursor to the nearest point with the given suffix.
+ ** Call Mode:
+ ** bt_prefix_jump(+TreeHandle, +Prefix).
+ ** NOTE: This, unlink bt_getl cannot be used concurrently. That is,
+ ** once a call to bt_prefix_jump is made, it will disrupt the cursor
+ ** and cause unpredicatble results on previous calls to bt_prefix_next.
+ **********************************************************/
+DllExport int call_conv bt_prefix_jump(CTXTdecl)
 {
-	STRFILE strfile;
-	
-	char *st = "[a(b,c), a(c,d)]";
-	strfile.strcnt = strlen(st);
-	strfile.strptr = st;
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
 
-	read_canonical_term(CTXTdecl NULL, &strfile, 3);
+	int tree_index = p2c_int(tree_term);
+	// check that we can find an IndexTable in this range
+	if(tree_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable tree = villas[tree_index];
+
+	prolog_term key = reg_term(CTXTdecl 2);
+	char *buff = canonical_term(CTXTdecl key, 1);
+	int size = cannonical_term_size(CTXTdecl) + 1;
+	char *key_str = malloc(sizeof(char) * size);
+	strncpy(key_str, buff, size);
+
+	tree.prefix = key_str;
+	tree.cursorMode = PREFIX_MODE;
+
+	printf("Cursor MOde: %i", tree.cursorMode);
+
+	// now set the cursor on the villa.
+	vlcurjump(tree.villa, key_str, -1, VL_JFORWARD);
+
 	return TRUE;
 }
 
+/**
+ * bt_prefix_next/2.
+ * Returns the next entry in the current prefix or range query.
+ * Call Mode:
+ * bt_prefix_next(+TreeHandle, -Value).
+ **/
+DllExport int call_conv bt_prefix_next(CTXTdecl)
+{
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "PREFIX Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
 
+	int tree_index = p2c_int(tree_term);
+	// check that we can find an IndexTable in this range
+	if(tree_index >= nextIndex)
+	{
+		fprintf(stderr, "PREFIX Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
 
+	struct IndexTable tree = villas[tree_index];
 
+	// verify the tree is in prefix mode
+	if(tree.cursorMode != PREFIX_MODE)
+	{
+		fprintf(stderr, "PREFIX Error: Tree is not currently in PREFIX mode (%i).\n", tree.cursorMode);
+		return FALSE;
+	}
+
+	// now look up the next cursor value
+	char *key = vlcurkey(tree.villa, NULL);
+	if(key == NULL)
+	{
+		printf("Cursor has reached the end of the tree.");
+		return FALSE;
+	}
+
+	// now verify the prefix condition
+	if(strstr(key, tree.prefix) != key)
+	{
+    	// no more values
+		tree.cursorMode = NOT_INITIALIZED;
+		free(tree.prefix);
+		tree.prefix = NULL;
+		return FALSE;
+    }
+
+    // we are still in the prefix range, unify and return
+    free(key);
+
+    STRFILE strfile;
+    char *value = vlcurval(tree.villa, NULL);
+	strfile.strcnt = strlen(value);
+	strfile.strptr = value;
+
+	vlcurnext(tree.villa);
+
+	return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+}

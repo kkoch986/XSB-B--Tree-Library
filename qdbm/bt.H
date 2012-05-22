@@ -4,4 +4,7 @@
 :- export bt_init/3, bt_close/1.
 :- export bt_insert/2.
 :- export bt_get/3, bt_getl/3, bt_getnext/2.
-:- export bt_test/3.
+:- export bt_drop/2.
+
+%% prefix and range queries
+:- export bt_prefix_jump/2, bt_prefix_next/2.

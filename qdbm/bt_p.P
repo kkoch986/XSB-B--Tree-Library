@@ -8,12 +8,16 @@
 :- import bt_get/3 from bt.
 :- import bt_getl/3 from bt.
 :- import bt_getnext/2 from bt.
+:- import bt_drop/2 from bt.
 
 %% This function will initialize a btree
 btinit(Pred/Arity, Argument, Handle) :- bt_init(Pred/Arity, Argument, Handle).
 
 %% Close a B+ Tree.
 btclose(Handle) :- bt_close(Handle).
+
+%% Drop a B+ Tree.
+btdrop(Pred/Arity, Argument) :- bt_drop(Pred/Arity, Argument).
 
 %% Insert a Term into a B+ Tree
 btinsert(Handle, Term) :- bt_insert(Handle, Term).

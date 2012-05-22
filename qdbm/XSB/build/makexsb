@@ -70,10 +70,10 @@ if test "$force_devel" = "yes"; then
     makeargs="$makeargs devel"
 fi
 
-#config=`/Users/kenkoch/research/qdbm/XSB/build/config.guess`
-#dir=/Users/kenkoch/research/qdbm/XSB/config/`/Users/kenkoch/research/qdbm/XSB/build/config.sub $config`${suffix}
+#config=`/home/ken/research/qdbm/XSB/build/config.guess`
+#dir=/home/ken/research/qdbm/XSB/config/`/home/ken/research/qdbm/XSB/build/config.sub $config`${suffix}
 config=`./config.guess`
-#dir=/Users/kenkoch/research/qdbm/XSB/config/`./config.sub $config`${suffix}
+#dir=/home/ken/research/qdbm/XSB/config/`./config.sub $config`${suffix}
 dir=../config/`./config.sub $config`${suffix}
 makefile=${dir}/topMakefile
 

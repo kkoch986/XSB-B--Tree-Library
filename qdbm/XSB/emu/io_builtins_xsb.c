@@ -1895,6 +1895,9 @@ char *canonical_term(CTXTdeclc Cell prologterm, int letter_flag) {
   return wcan_string->string;
 }
 
+/** BT Library, need to get the actual size of the last call to cannonical term **/
+int cannonical_term_size(CTXTdeclc) { return wcan_string->length; }
+
 void print_term_canonical(CTXTdeclc FILE *fptr, Cell prologterm, int letterflag)
 {
   write_canonical_term(CTXTc prologterm, letterflag);

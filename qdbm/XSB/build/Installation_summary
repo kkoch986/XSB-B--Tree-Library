@@ -6,22 +6,22 @@
 XSB Version:	   3.3.6
 Code name:	   Pignoletto
 Release date:	   2012-01-02
-Configuration:	   i386-apple-darwin10.8.0
-Installation date: Mon May 14 15:46:09 EDT 2012
+Configuration:	   x86_64-unknown-linux-gnu
+Installation date: Thu May 17 09:27:24 EDT 2012
 
-  Build process is looking for XSB sources in:	  /Users/kenkoch/research/qdbm/XSB
-  XSB should be installed in:			  /Users/kenkoch/research/qdbm/XSB
-  Configuration-specific executables go in:	  /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin
-  Configuration-specific libraries go in:	  /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/lib
-  Object code goes in:				  /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/saved.o
-  Site-specific code goes in:			  /Users/kenkoch/research/qdbm/XSB/site
-  Site configuration-specific code goes in:	  /Users/kenkoch/research/qdbm/XSB/site/config/i386-apple-darwin10.8.0
-  XSB will be built with:			  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
-  builtin.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
-  loader_xsb.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
-  emuloop.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
-  tr_utils.c will be built with:		  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
-  Loader flags: 				  -lm
+  Build process is looking for XSB sources in:	  /home/ken/research/qdbm/XSB
+  XSB should be installed in:			  /home/ken/research/qdbm/XSB
+  Configuration-specific executables go in:	  /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin
+  Configuration-specific libraries go in:	  /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/lib
+  Object code goes in:				  /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/saved.o
+  Site-specific code goes in:			  /home/ken/research/qdbm/XSB/site
+  Site configuration-specific code goes in:	  /home/ken/research/qdbm/XSB/site/config/x86_64-unknown-linux-gnu
+  XSB will be built with:			  gcc  -O3 -fno-strict-aliasing  -Wall -pipe 
+  builtin.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -Wall -pipe 
+  loader_xsb.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -Wall -pipe 
+  emuloop.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -Wall -pipe 
+  tr_utils.c will be built with:		  gcc  -O3 -fno-strict-aliasing  -Wall -pipe 
+  Loader flags: 				  -lm -ldl -Wl,-export-dynamic -lpthread
   Compilation mode:				  optimal
   XSB abstract machine: 			  slg-wam
   XSB scheduling strategy:			  local
@@ -34,7 +34,6 @@ Installation date: Mon May 14 15:46:09 EDT 2012
   Native support for Oracle:			  no
   Support for the old ODBC driver:		  no
 
-  Java compiler:                                  /usr/bin/javac
   Support for InterProlog's native engine:   	  no
   -- JDK may not have been installed or
   -- JAVA_HOME not set. You will still be able
@@ -48,25 +47,315 @@ Installation date: Mon May 14 15:46:09 EDT 2012
   Curl loader flags:                              
 
   XPath support:				  no
-  PCRE support (Perl pattern matching):           yes
-  PCRE C flags:        	                          -g -O2
-  PCRE loader flags:                              
+  PCRE support (Perl pattern matching):           no
 
 
-
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/emu'
 -e 
-Compiling XSB with gcc using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -Wall -pipe 
+
+-e 	[gcc] main_xsb.c
+-e 	[gcc] auxlry.c
+-e 	[gcc] biassert.c
+-e 	[gcc] builtin.c using -O3 -fno-strict-aliasing  -Wall -pipe 
+-e 	[gcc] cinterf.c
+-e 	[gcc] conc_compl.c
+-e 	[gcc] debug_xsb.c
+debug_xsb.c: In function ‘print_tables’:
+debug_xsb.c:1576:7: warning: ignoring return value of ‘scanf’, declared with attribute warn_unused_result [-Wunused-result]
+-e 	[gcc] dis.c
+-e 	[gcc] dynload.c
+-e 	[gcc] dynamic_stack.c
+-e 	[gcc] deadlock.c
+-e 	[gcc] emuloop.c using -O3 -fno-strict-aliasing  -Wall -pipe 
+In file included from emuloop.c:414:0:
+schedrev_xsb_i.h: In function ‘sched_answers’:
+schedrev_xsb_i.h:73:9: warning: variable ‘next_answer’ set but not used [-Wunused-but-set-variable]
+In file included from emuloop.c:1664:0:
+slginsts_xsb_i.h: In function ‘emuloop’:
+slginsts_xsb_i.h:128:3: warning: variable ‘op1’ set but not used [-Wunused-but-set-variable]
+slginsts_xsb_i.h:686:5: warning: variable ‘op3’ set but not used [-Wunused-but-set-variable]
+slginsts_xsb_i.h:686:5: warning: variable ‘op1’ set but not used [-Wunused-but-set-variable]
+slginsts_xsb_i.h:948:7: warning: variable ‘abstr_size’ set but not used [-Wunused-but-set-variable]
+slginsts_xsb_i.h:945:22: warning: variable ‘producer_csf’ set but not used [-Wunused-but-set-variable]
+slginsts_xsb_i.h:944:3: warning: variable ‘op1’ set but not used [-Wunused-but-set-variable]
+emuloop.c:2332:5: warning: variable ‘op1’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] error_xsb.c
+-e 	[gcc] findall.c
+findall.c: In function ‘findall_copy_to_heap’:
+findall.c:308:7: warning: variable ‘tr1’ set but not used [-Wunused-but-set-variable]
+findall.c: In function ‘findall_copy_template_to_chunk’:
+findall.c:537:11: warning: variable ‘tr1’ set but not used [-Wunused-but-set-variable]
+findall.c: In function ‘do_copy_term’:
+findall.c:916:9: warning: variable ‘tr1’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] function.c
+-e 	[gcc] hash_xsb.c
+-e 	[gcc] hashtable_xsb.c
+-e 	[gcc] heap_xsb.c
+In file included from heap_xsb.c:374:0:
+gc_mark.h: In function ‘mark_hreg_from_choicepoints’:
+gc_mark.h:708:11: warning: variable ‘bprev’ set but not used [-Wunused-but-set-variable]
+In file included from heap_xsb.c:377:0:
+gc_copy.h: In function ‘adapt_hfreg_from_choicepoints’:
+gc_copy.h:180:11: warning: variable ‘bprev’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] init_xsb.c
+-e 	[gcc] inst_xsb.c
+-e 	[gcc] io_builtins_xsb.c
+io_builtins_xsb.c: In function ‘fmt_read’:
+io_builtins_xsb.c:588:7: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:666:5: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:521:7: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] loader_xsb.c using -O3 -fno-strict-aliasing  -Wall -pipe 
+loader_xsb.c: In function ‘get_index_tab’:
+loader_xsb.c:261:15: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:266:7: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:304:15: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:310:15: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:321:5: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:248:11: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c: In function ‘load_text’:
+loader_xsb.c:443:2: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:448:2: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:453:2: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:459:2: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:464:2: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:472:2: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:476:2: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:422:11: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c: In function ‘load_index’:
+loader_xsb.c:527:5: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:529:5: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:522:11: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c: In function ‘get_obj_atom’:
+loader_xsb.c:681:5: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:674:11: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c: In function ‘load_one_sym’:
+loader_xsb.c:701:11: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c: In function ‘loader1’:
+loader_xsb.c:947:3: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:968:5: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:970:5: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:932:11: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c: In function ‘loader_foreign’:
+loader_xsb.c:1097:3: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c:1085:11: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+loader_xsb.c: In function ‘loader’:
+loader_xsb.c:1126:28: warning: variable ‘res’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] memory_xsb.c
+memory_xsb.c: In function ‘tcpstack_realloc’:
+memory_xsb.c:435:13: warning: ‘new_trail’ may be used uninitialized in this function [-Wuninitialized]
+-e 	[gcc] orient_xsb.c
+orient_xsb.c: In function ‘xsb_executable_full_path’:
+orient_xsb.c:140:9: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] pathname_xsb.c
+pathname_xsb.c: In function ‘expand_filename’:
+pathname_xsb.c:205:9: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] psc_xsb.c
+-e 	[gcc] random_xsb.c
+-e 	[gcc] remove_unf.c
+-e 	[gcc] residual.c
+-e 	[gcc] rw_lock.c
+-e 	[gcc] scc_xsb.c
+-e 	[gcc] slgdelay.c
+slgdelay.c: In function ‘simpl_var_trie_lookup’:
+slgdelay.c:359:7: warning: variable ‘std_var_num’ set but not used [-Wunused-but-set-variable]
+slgdelay.c: In function ‘simplify_neg_succeeds’:
+slgdelay.c:1415:10: warning: variable ‘tmp_dl’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] socket_xsb.c
+socket_xsb.c: In function ‘xsb_socket_request’:
+socket_xsb.c:777:9: warning: variable ‘connectname_found’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] string_xsb.c
+-e 	[gcc] storage_xsb.c
+-e 	[gcc] struct_manager.c
+-e 	[gcc] sub_delete.c
+-e 	[gcc] subp.c
+subp.c:1108:38: warning: initialization makes integer from pointer without a cast [enabled by default]
+subp.c: In function ‘executeSleeperThread’:
+subp.c:1133:28: warning: assignment makes integer from pointer without a cast [enabled by default]
+subp.c: In function ‘startSleeperThread’:
+subp.c:1164:30: warning: assignment makes integer from pointer without a cast [enabled by default]
+subp.c:1160:7: warning: variable ‘killrc’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] system_xsb.c
+-e 	[gcc] table_stats.c
+table_stats.c: In function ‘print_detailed_tablespace_stats’:
+table_stats.c:261:23: warning: variable ‘trieassert_used’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] tables.c
+In file included from tables.c:56:0:
+sub_tables_xsb_i.h: In function ‘reconstruct_template_for_producer’:
+sub_tables_xsb_i.h:90:3: warning: variable ‘root’ set but not used [-Wunused-but-set-variable]
+tables.c: In function ‘table_call_search’:
+tables.c:294:17: warning: variable ‘attv_num’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] thread_xsb.c
+-e 	[gcc] timer_xsb.c
+-e 	[gcc] token_xsb.c
+-e 	[gcc] tr_utils.c using -O3 -fno-strict-aliasing  -Wall -pipe 
+tr_utils.c: In function ‘construct_answer_template’:
+tr_utils.c:307:3: warning: variable ‘root’ set but not used [-Wunused-but-set-variable]
+tr_utils.c: In function ‘breg_retskel’:
+tr_utils.c:1351:39: warning: variable ‘abstr_size’ set but not used [-Wunused-but-set-variable]
+tr_utils.c:1351:30: warning: variable ‘attv_num’ set but not used [-Wunused-but-set-variable]
+tr_utils.c: In function ‘private_trie_intern’:
+tr_utils.c:1540:21: warning: variable ‘type’ set but not used [-Wunused-but-set-variable]
+tr_utils.c: In function ‘private_trie_interned’:
+tr_utils.c:1604:21: warning: variable ‘type’ set but not used [-Wunused-but-set-variable]
+tr_utils.c: In function ‘private_trie_unintern’:
+tr_utils.c:1691:21: warning: variable ‘type’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] trace_xsb.c
+trace_xsb.c: In function ‘stat_inusememory’:
+trace_xsb.c:186:5: warning: variable ‘de_count’ set but not used [-Wunused-but-set-variable]
+trace_xsb.c:182:43: warning: variable ‘dl_count’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] trie_lookup.c
+-e 	[gcc] trie_search.c
+-e 	[gcc] tries.c
+tries.c: In function ‘get_lastnode_cs_retskel’:
+tries.c:2470:15: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+-e 	[gcc] tst_insert.c
+-e 	[gcc] tst_retrv.c
+-e 	[gcc] tst_unify.c
+tst_unify.c: In function ‘consume_subsumptive_answer’:
+tst_unify.c:432:3: warning: variable ‘root’ set but not used [-Wunused-but-set-variable]
+-e 	[gcc] tst_utils.c
+-e 	[gcc] varstring.c
+-e 	[gcc] ubi_BinTree.c
+-e 	[gcc] ubi_SplayTree.c
+-e 	[gcc] hashtable.c
+-e 	[gcc] hashtable_itr.c
+-e 	[gcc] url_encode.c
+-e 	[gcc] incr_xsb.c
+-e 	[gcc] call_graph_xsb.c
+
+Making XSB executable /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb 
+
+-e 	[gcc] -o /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/emu'
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/gpp'
+
+-e 	[gcc] gpp.c using  
+-e 	[gcc] -o gpp
+
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/gpp'
+
+
+----------------- Warnings ------------------------
+While compiling XSB/cmplib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/lib:
+++Warning[XSB]: [Compiler] write_term : Unused symbol portray_attribute/2
+++Warning[XSB]: [Compiler] dump_table : Unused symbol writeln/1
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/syslib:
+-------------------- End --------------------------
+
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/emu'
+-e 
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -Wall -pipe 
 
 -e 	[gcc] io_builtins_xsb.c
 io_builtins_xsb.c: In function ‘fmt_read’:
-io_builtins_xsb.c:588: warning: format not a string literal and no format arguments
-io_builtins_xsb.c:666: warning: format not a string literal and no format arguments
+io_builtins_xsb.c:588:7: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:666:5: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:521:7: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
 
-Making XSB executable /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb 
+Making XSB executable /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb 
 
--e 	[gcc] -o /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb
+-e 	[gcc] -o /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/emu'
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/gpp'
 -e 	[gcc] -o gpp
 
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/gpp'
+
+
+----------------- Warnings ------------------------
+While compiling XSB/cmplib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/lib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/syslib:
+-------------------- End --------------------------
+
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/emu'
+-e 
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -Wall -pipe 
+
+-e 	[gcc] io_builtins_xsb.c
+io_builtins_xsb.c: In function ‘fmt_read’:
+io_builtins_xsb.c:588:7: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:666:5: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:521:7: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+
+Making XSB executable /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb 
+
+-e 	[gcc] -o /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/emu'
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/gpp'
+-e 	[gcc] -o gpp
+
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/gpp'
+
+
+----------------- Warnings ------------------------
+While compiling XSB/cmplib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/lib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/syslib:
+-------------------- End --------------------------
+
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/emu'
+-e 
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -Wall -pipe 
+
+-e 	[gcc] io_builtins_xsb.c
+io_builtins_xsb.c: In function ‘fmt_read’:
+io_builtins_xsb.c:588:7: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:666:5: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:521:7: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+
+Making XSB executable /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb 
+
+-e 	[gcc] -o /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/emu'
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/gpp'
+-e 	[gcc] -o gpp
+
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/gpp'
+
+
+----------------- Warnings ------------------------
+While compiling XSB/cmplib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/lib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/syslib:
+-------------------- End --------------------------
+
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/emu'
+-e 
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -Wall -pipe 
+
+-e 	[gcc] io_builtins_xsb.c
+io_builtins_xsb.c: In function ‘fmt_read’:
+io_builtins_xsb.c:588:7: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:666:5: warning: format not a string literal and no format arguments [-Wformat-security]
+io_builtins_xsb.c:521:7: warning: variable ‘dummy’ set but not used [-Wunused-but-set-variable]
+
+Making XSB executable /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb 
+
+-e 	[gcc] -o /home/ken/research/qdbm/XSB/config/x86_64-unknown-linux-gnu/bin/xsb
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/emu'
+make[1]: Entering directory `/home/ken/research/qdbm/XSB/gpp'
+-e 	[gcc] -o gpp
+
+make[1]: Leaving directory `/home/ken/research/qdbm/XSB/gpp'
 
 
 ----------------- Warnings ------------------------

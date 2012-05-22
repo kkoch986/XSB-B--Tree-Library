@@ -91,3 +91,8 @@ extern int get_more_chunk(CTXTdecl);
 extern void findall_copy_to_heap(CTXTdeclc Cell, CPtr, CPtr *);
 extern int findall_init_c(CTXTdecl);
 extern void findall_free(CTXTdeclc int);
+
+
+////////
+char *canonical_term(CTXTdeclc Cell prologterm, int letter_flag);
+int cannonical_term_size(CTXTdeclc);
