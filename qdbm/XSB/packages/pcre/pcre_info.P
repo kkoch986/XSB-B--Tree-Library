@@ -26,7 +26,7 @@
 
 :- export pcre_info/2.
 
-pcre_info(support, 'no').
+pcre_info(support, 'yes').
 pcre_info(libdir,  '').
 pcre_info(ccflags, '-g -O2').
 pcre_info(ldflags, '').
