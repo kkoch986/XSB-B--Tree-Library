@@ -9,6 +9,7 @@
 :- import bt_getl/3 from bt.
 :- import bt_getnext/2 from bt.
 :- import bt_drop/2 from bt.
+:- import bt_prefix_jump/2, bt_prefix_next/2 from bt.
 
 %% This function will initialize a btree
 btinit(Pred/Arity, Argument, Handle) :- bt_init(Pred/Arity, Argument, Handle).
@@ -34,4 +35,22 @@ btgetnext(AnswerHandle, Value) :-
 		; btgetnext(AnswerHandle, Value)
 	).
 
-%% TODO: Prefix and Range queries.
+%% btprefix/3
+%% Jump the tree cursor to the first element whose key has the given prefix.
+%% Note this method cannot be called simulaneously on a single tree handle.
+%% In order to execute 2 prefix or range queries at the same time, 2 calls 
+%% to bt_init must be made (even if to the same tree).
+%% Call with:
+%% bt_prefix_jump(+TreeHandle, +KeyPrefix, -Value).
+btprefix(TreeHandle, Prefix, Value) :- 
+	bt_prefix_jump(TreeHandle, Prefix),
+	btprefixnext(TreeHandle, Value).
+
+%% helper for Non-Determinism to btprefix.
+btprefixnext(TreeHandle, Value) :-
+	bt_prefix_next(TreeHandle, Value0),
+	( 
+			Value = Value0
+			; btprefixnext(TreeHandle, Value)
+	).
+
