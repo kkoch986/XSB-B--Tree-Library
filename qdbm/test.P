@@ -131,6 +131,7 @@ btprofile :-
 	parse(0, Words, X),
 	cputime(StartBuild),
 	build_tree(Words, 1), 
+	build_tree(Words, 2),
 	cputime(End), 
 	BuildTime is End - StartBuild,
 	ScanTime is StartParse - StartScan,

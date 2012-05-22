@@ -526,10 +526,8 @@ DllExport int call_conv bt_prefix_jump(CTXTdecl)
 	char *key_str = malloc(sizeof(char) * size);
 	strncpy(key_str, buff, size);
 
-	tree.prefix = key_str;
-	tree.cursorMode = PREFIX_MODE;
-
-	printf("Cursor MOde: %i", tree.cursorMode);
+	villas[tree_index].prefix = key_str;
+	villas[tree_index].cursorMode = PREFIX_MODE;
 
 	// now set the cursor on the villa.
 	vlcurjump(tree.villa, key_str, -1, VL_JFORWARD);
@@ -566,7 +564,7 @@ DllExport int call_conv bt_prefix_next(CTXTdecl)
 	// verify the tree is in prefix mode
 	if(tree.cursorMode != PREFIX_MODE)
 	{
-		fprintf(stderr, "PREFIX Error: Tree is not currently in PREFIX mode (%i).\n", tree.cursorMode);
+		fprintf(stderr, "PREFIX Error: Tree is not currently in PREFIX mode (%i, %s).\n", tree.cursorMode, tree.prefix);
 		return FALSE;
 	}
 
@@ -574,7 +572,7 @@ DllExport int call_conv bt_prefix_next(CTXTdecl)
 	char *key = vlcurkey(tree.villa, NULL);
 	if(key == NULL)
 	{
-		printf("Cursor has reached the end of the tree.");
+		printf("PREFIX: vlcurkey Error\n");
 		return FALSE;
 	}
 
@@ -582,9 +580,9 @@ DllExport int call_conv bt_prefix_next(CTXTdecl)
 	if(strstr(key, tree.prefix) != key)
 	{
     	// no more values
-		tree.cursorMode = NOT_INITIALIZED;
+		villas[tree_index].cursorMode = NOT_INITIALIZED;
 		free(tree.prefix);
-		tree.prefix = NULL;
+		villas[tree_index].prefix = NULL;
 		return FALSE;
     }
 
