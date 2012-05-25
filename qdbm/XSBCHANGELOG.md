@@ -51,17 +51,18 @@ To:
     if (isnonvar(prologvar) && return_location_code != 3 && return_location_code != 4)
 
 
-1. __emu/io_builtins_xsb.c__ \[Line 1205\]
+1. __emu/io_builtins_xsb.c__ \[Line 1249\]
 
-Add:
-	
-	/* For the B+ Tree Library, we are only interested in unification of the matched term */
+Change:
+
+    return retpscptr;
+
+To:
+
   	if(return_location_code == 3 || return_location_code == 4)
-  	{
-      new_heap_free(hreg);
-      free_term_buffer();
       return unify(CTXTc prologvar, term);
-  	}
+    else
+      return retpscptr;
 
 1. __emu/io_builtins_xsb.h__ \[End Of File\]
 

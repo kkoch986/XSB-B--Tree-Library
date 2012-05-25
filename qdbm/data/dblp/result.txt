@@ -1,12 +1,41 @@
 ---------------------------------------------
+------------- Load Dyn, to assert. ----------
+loading cputime:  78.7790
+loading walltime: 88.2840
+computing cputime:  1.0120
+computing walltime: 1.0540
+total cputime: 79.7910
+total walltime: 89.3380
+---------------------------------------------
+---------------------------------------------
 -- Load Dyn, to assert and create B+ Tree. --
 initializing cputime:  0.0000
-initializing wallitme: 0.0080
-loading cputime:  78.9860
-loading walltime: 100.3760
-building tree cputime:  3.5470
-building tree walltime: 5.6240
+initializing wallitme: 0.0940
+loading cputime:  78.3220
+loading walltime: 83.0520
+building tree cputime:  3.6460
+building tree walltime: 24.1580
 ---------------------------------------------
-Total Building cputime:  82.5330
-Total Building wallitme: 106.0080
+Total Building cputime:  81.9680
+Total Building wallitme: 107.3040
+---------------------------------------------
+---------------------------------------------
+Load and Query B+ Tree for all Papers in 1994
+reinitializing cputime:  0.0000
+reinitializing wallitme: 0.0000
+querying cputime:  0.2650
+querying wallitme: 0.2950
+---------------------------------------------
+Total Querying cputime:  0.2650
+Total Querying wallitme: 0.2950
+---------------------------------------------
+---------------------------------------------
+Load and Query B+ Tree for all Papers in 1994
+reinitializing cputime:  0.0000
+reinitializing wallitme: 0.0000
+querying cputime:  0.0580
+querying wallitme: 0.0980
+---------------------------------------------
+Total Querying cputime:  0.0580
+Total Querying wallitme: 0.0980
 ---------------------------------------------

@@ -1202,14 +1202,6 @@ Integer read_canonical_term(CTXTdeclc FILE *filep, STRFILE *instr, int return_lo
 	term = opstk[0].op;
 	
 	check_glstack_overflow(5, pcreg, (size+1)*sizeof(Cell)) ;
-
-  /* For the B+ Tree Library, we are only interested in unification of the matched term */
-  if(return_location_code == 3 || return_location_code == 4)
-  {
-      new_heap_free(hreg);
-      free_term_buffer();
-      return unify(CTXTc prologvar, term);
-  }
   
 	/* get return location again, in case it moved, whole reasong for r_c_r_v */
 	prologvar = read_canonical_return_var(CTXTc return_location_code); 
@@ -1250,10 +1242,14 @@ Integer read_canonical_term(CTXTdeclc FILE *filep, STRFILE *instr, int return_lo
 
       if (opstk_size > MAX_INIT_STK_SIZE) {
 	mem_dealloc(opstk,opstk_size*sizeof(struct opstktype),READ_CAN_SPACE); opstk = NULL;
-	mem_dealloc(funstk,funstk_size*sizeof(struct funstktype),READ_CAN_SPACE); funstk = NULL;
-	opstk_size = 0; funstk_size = 0;
+  mem_dealloc(funstk,funstk_size*sizeof(struct funstktype),READ_CAN_SPACE); funstk = NULL;
+  opstk_size = 0; funstk_size = 0;
       }
-      return retpscptr;
+
+      if(return_location_code == 3 || return_location_code == 4)
+        return unify(CTXTc prologvar, term);
+      else
+        return retpscptr;
     }
   }
 }
