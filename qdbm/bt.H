@@ -8,3 +8,4 @@
 
 %% prefix and range queries
 :- export bt_prefix_jump/2, bt_prefix_next/2.
+:- export bt_range_init/3, bt_range_next/2.

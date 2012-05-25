@@ -18,8 +18,8 @@
 /* QDBM Includes */
 #include <depot.h>
 #include <cabin.h>
-//#include <vista.h>
-#include <villa.h>
+#include <vista.h>
+//#include <villa.h>
 
 #define DBNAME "xsbdb"
 
@@ -405,6 +405,7 @@ DllExport int call_conv bt_getl(CTXTdecl)
 	struct ActiveLookupListNode *node = malloc(sizeof(struct ActiveLookupListNode));
 	node->index = nextCBLIndex++;
 	node->next = NULL;
+	node->prev = NULL;
 	node->list = value;
 
 	if(cblHead != NULL)
@@ -463,6 +464,11 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 	//printf("FOUND CBL: %i\n", traveller->index);
 
 	// retrieve the next value from the CBL
+	if(traveller->list == NULL) 
+	{
+		printf("List Empty (never full).\n");
+		return FALSE;
+	}
 	char *value = cblistpop(traveller->list, NULL);
 
 	if(value == NULL)
@@ -471,6 +477,7 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 		// this list is now empty, remove it
 		if(traveller->prev != NULL)
 			traveller->prev->next = traveller->next;
+
 		if(traveller->next != NULL)
 			traveller->next->prev = traveller->prev;
 
@@ -582,6 +589,119 @@ DllExport int call_conv bt_prefix_next(CTXTdecl)
     	// no more values
 		villas[tree_index].cursorMode = NOT_INITIALIZED;
 		free(tree.prefix);
+		villas[tree_index].prefix = NULL;
+		return FALSE;
+    }
+
+    // we are still in the prefix range, unify and return
+    free(key);
+
+    STRFILE strfile;
+    char *value = vlcurval(tree.villa, NULL);
+	strfile.strcnt = strlen(value);
+	strfile.strptr = value;
+
+	vlcurnext(tree.villa);
+
+	return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+}
+
+
+/********************************
+ ** bt_range_init/3
+ ** bt_range_init(+TreeHandle, +LowerBound, +UpperBound)
+ ********************************/
+DllExport int call_conv bt_range_init(CTXTdecl)
+{
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int tree_index = p2c_int(tree_term);
+	// check that we can find an IndexTable in this range
+	if(tree_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable tree = villas[tree_index];
+
+	prolog_term key = reg_term(CTXTdecl 2);
+	char *buff = canonical_term(CTXTdecl key, 1);
+	int size = cannonical_term_size(CTXTdecl) + 1;
+	char *key_str = malloc(sizeof(char) * size);
+	strncpy(key_str, buff, size);
+
+	villas[tree_index].prefix = key_str;
+	villas[tree_index].cursorMode = RANGE_MODE;
+
+	prolog_term bound = reg_term(CTXTdecl 3);
+	buff = canonical_term(CTXTdecl bound, 1);
+	size = cannonical_term_size(CTXTdecl) + 1;
+	key_str = malloc(sizeof(char) * size);
+	strncpy(key_str, buff, size);
+
+	villas[tree_index].upperBound = key_str;
+
+	// now set the cursor on the villa.
+	vlcurjump(tree.villa, key_str, -1, VL_JFORWARD);
+
+	return TRUE;
+}
+
+/**
+ * bt_range_next/2.
+ * Returns the next entry in the current range query.
+ * Call Mode:
+ * bt_prefix_next(+TreeHandle, -Value).
+ **/
+DllExport int call_conv bt_range_next(CTXTdecl)
+{
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "PREFIX Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int tree_index = p2c_int(tree_term);
+	// check that we can find an IndexTable in this range
+	if(tree_index >= nextIndex)
+	{
+		fprintf(stderr, "PREFIX Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable tree = villas[tree_index];
+
+	// verify the tree is in prefix mode
+	if(tree.cursorMode != PREFIX_MODE)
+	{
+		fprintf(stderr, "PREFIX Error: Tree is not currently in PREFIX mode (%i, %s).\n", tree.cursorMode, tree.prefix);
+		return FALSE;
+	}
+
+	// now look up the next cursor value
+	char *key = vlcurkey(tree.villa, NULL);
+	if(key == NULL)
+	{
+		printf("PREFIX: vlcurkey Error\n");
+		return FALSE;
+	}
+
+	// now verify the prefix condition
+	if(strcmp(key, tree.upperBound) >= 1)
+	{
+    	// no more values
+		villas[tree_index].cursorMode = NOT_INITIALIZED;
+		free(tree.prefix);
+		free(tree.upperBound);
 		villas[tree_index].prefix = NULL;
 		return FALSE;
     }

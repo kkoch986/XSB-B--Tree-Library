@@ -1206,6 +1206,8 @@ Integer read_canonical_term(CTXTdeclc FILE *filep, STRFILE *instr, int return_lo
   /* For the B+ Tree Library, we are only interested in unification of the matched term */
   if(return_location_code == 3 || return_location_code == 4)
   {
+      new_heap_free(hreg);
+      free_term_buffer();
       return unify(CTXTc prologvar, term);
   }
   

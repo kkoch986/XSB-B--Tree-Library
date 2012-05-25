@@ -58,7 +58,9 @@ Add:
 	/* For the B+ Tree Library, we are only interested in unification of the matched term */
   	if(return_location_code == 3 || return_location_code == 4)
   	{
-    	return unify(CTXTc prologvar, term);
+      new_heap_free(hreg);
+      free_term_buffer();
+      return unify(CTXTc prologvar, term);
   	}
 
 1. __emu/io_builtins_xsb.h__ \[End Of File\]
@@ -159,4 +161,10 @@ This would open the tree, insert the term of word/2 and close the tree to ensure
 
 Argueably the most important functionality in the b+ Tree is the types of queries that can be made. Read below to find the different calls that can be made to query the B+ Tree.
 
+
+## cool ideas
+
+1. we need a way to crawl the whole tree, we could check if the key passed to get is unbound and bind it to the first key and crawl along....
+1. cursor manipulation methods
+1. 
 
