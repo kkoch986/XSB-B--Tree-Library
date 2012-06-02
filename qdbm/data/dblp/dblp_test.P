@@ -13,26 +13,28 @@ test() :-
     open('result.txt', append, Output),
 	measureTime(load_dyn('dblp.data'), LoadT, LoadWT),
 	measureTime((queryrule(_,_,'1994',_,_), fail; true), T, WT),
-	TotalTimeT is LoadT + T, TotalTimeWT is LoadWT + WT,
+	measureTime((queryrule(_,_,'1994',_,_), fail; true), T2, WT2),
+	TotalTimeT is LoadT + T + T2, TotalTimeWT is LoadWT + WT + WT2,
 	writeln(Output, '---------------------------------------------'), 
     writeln(Output, '------------- Load Dyn, to assert. ----------'), 
 	write(Output, 'loading cputime:  '), writeln(Output, LoadT),
 	write(Output, 'loading walltime: '), writeln(Output, LoadWT),
 	write(Output, 'computing cputime:  '), writeln(Output, T),
 	write(Output, 'computing walltime: '), writeln(Output, WT),
+	write(Output, 'second query cputime:  '), writeln(Output, T2),
+	write(Output, 'second query walltime: '), writeln(Output, WT2),
 	write(Output, 'total cputime: '), writeln(Output, TotalTimeT),
 	write(Output, 'total walltime: '), writeln(Output, TotalTimeWT),
 	writeln(Output, '---------------------------------------------'), 
 	flush_output(Output),
 	close(Output).
 
-
 ?- ['../../bt'], ['../../bt_p'].
 testbtcreate() :-
     open('result.txt', append, Output),
     %% drop any old b tree for paper/5.
     btdrop(paper/5, 3),
-	%% Load Dyn the file and assert to queryrule/5
+	%% Load Dyn the file and assert to so we can use queryrule/5
 	measureTime(load_dyn('dblp.data'), LoadT, LoadWT),
 	%% open the B+ Tree
     measureTime(btinit(paper/5, 3, Handle), InitT, InitWT),
@@ -60,11 +62,11 @@ testbtcreate() :-
 testbtquery() :- 
 	%% now try and make a query into the B+ tree
 	measureTime(btinit(paper/5, 3, Handle2), ReinitT, ReinitWT),
-	measureTime((btget(Handle2, '1994', _ ), fail ; true), QueryT, QueryWT),
+	measureTime((btget(Handle2, '1994', _ ) , fail ; true), QueryT, QueryWT),
 	%% write out the results
 	open('result.txt', append, Output),
 	writeln(Output, '---------------------------------------------'), 
-	writeln(Output, 'Load and Query B+ Tree for all Papers in 2011'), 
+	writeln(Output, 'Load and Query B+ Tree for all Papers in a year'), 
 	write(Output, 'reinitializing cputime:  '), writeln(Output, ReinitT),
 	write(Output, 'reinitializing wallitme: '), writeln(Output, ReinitWT),
     write(Output, 'querying cputime:  '), writeln(Output, QueryT),
@@ -80,6 +82,7 @@ testbtquery() :-
 
 buildtree(Handle) :- 
 	(
+		Y = '2005',
 		queryrule(X,T,Y,A,K), 
 		btinsert(Handle, paper(X,T,Y,A,K)),
 		fail 

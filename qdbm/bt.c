@@ -28,7 +28,7 @@
 char *pt2dbname(char *predname, int arity, int arg);
 
 // stats regarding prefix or range query.
-static const int NOT_INITIALIZED = 10, PREFIX_MODE = 1, RANGE_MODE = 2;
+static const int NOT_INITIALIZED = 10, PREFIX_MODE = 1, RANGE_MODE = 2, MANUAL_CURSOR_MODE = 3;
 
 // a structure to hold information about the b+ tree table.
 struct IndexTable
@@ -525,6 +525,17 @@ DllExport int call_conv bt_prefix_jump(CTXTdecl)
 		return FALSE;
 	}
 
+	// make sure to free up any old search keys
+	if(villas[tree_index].cursorMode == PREFIX_MODE)
+	{
+		free(villas[tree_index].prefix);
+	}
+	else if(villas[tree_index].cursorMode == RANGE_MODE)
+	{
+		free(villas[tree_index].prefix);
+		free(villas[tree_index].upperBound);
+	}
+
 	struct IndexTable tree = villas[tree_index];
 
 	prolog_term key = reg_term(CTXTdecl 2);
@@ -617,7 +628,7 @@ DllExport int call_conv bt_range_init(CTXTdecl)
 	prolog_term tree_term = reg_term(CTXTdecl 1);
 	if(!is_int(tree_term))
 	{
-		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
+		fprintf(stderr, "RANGE INIT Error: Tree Handle Not Integer.\n");
 		return FALSE;	
 	} 
 
@@ -625,9 +636,21 @@ DllExport int call_conv bt_range_init(CTXTdecl)
 	// check that we can find an IndexTable in this range
 	if(tree_index >= nextIndex)
 	{
-		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		fprintf(stderr, "RANGE INIT Error: Handle Exceeds Range of Loaded Tables.\n");
 		return FALSE;
 	}
+
+	// make sure to free up any old search keys
+	if(villas[tree_index].cursorMode == PREFIX_MODE)
+	{
+		free(villas[tree_index].prefix);
+	}
+	else if(villas[tree_index].cursorMode == RANGE_MODE)
+	{
+		free(villas[tree_index].prefix);
+		free(villas[tree_index].upperBound);
+	}
+
 
 	struct IndexTable tree = villas[tree_index];
 
@@ -640,6 +663,10 @@ DllExport int call_conv bt_range_init(CTXTdecl)
 	villas[tree_index].prefix = key_str;
 	villas[tree_index].cursorMode = RANGE_MODE;
 
+	// now set the cursor on the villa.
+	vlcurjump(tree.villa, key_str, -1, VL_JFORWARD);
+
+	// now load the upper bound 
 	prolog_term bound = reg_term(CTXTdecl 3);
 	buff = canonical_term(CTXTdecl bound, 1);
 	size = cannonical_term_size(CTXTdecl) + 1;
@@ -647,9 +674,6 @@ DllExport int call_conv bt_range_init(CTXTdecl)
 	strncpy(key_str, buff, size);
 
 	villas[tree_index].upperBound = key_str;
-
-	// now set the cursor on the villa.
-	vlcurjump(tree.villa, key_str, -1, VL_JFORWARD);
 
 	return TRUE;
 }
@@ -666,7 +690,7 @@ DllExport int call_conv bt_range_next(CTXTdecl)
 	prolog_term tree_term = reg_term(CTXTdecl 1);
 	if(!is_int(tree_term))
 	{
-		fprintf(stderr, "PREFIX Error: Tree Handle Not Integer.\n");
+		fprintf(stderr, "RANGE Error: Tree Handle Not Integer.\n");
 		return FALSE;	
 	} 
 
@@ -674,16 +698,16 @@ DllExport int call_conv bt_range_next(CTXTdecl)
 	// check that we can find an IndexTable in this range
 	if(tree_index >= nextIndex)
 	{
-		fprintf(stderr, "PREFIX Error: Handle Exceeds Range of Loaded Tables.\n");
+		fprintf(stderr, "RANGE Error: Handle Exceeds Range of Loaded Tables.\n");
 		return FALSE;
 	}
 
 	struct IndexTable tree = villas[tree_index];
 
 	// verify the tree is in prefix mode
-	if(tree.cursorMode != PREFIX_MODE)
+	if(tree.cursorMode != RANGE_MODE)
 	{
-		fprintf(stderr, "PREFIX Error: Tree is not currently in PREFIX mode (%i, %s).\n", tree.cursorMode, tree.prefix);
+		fprintf(stderr, "RANGE Error: Tree is not currently in RANGE mode (%i, %s).\n", tree.cursorMode, tree.prefix);
 		return FALSE;
 	}
 
@@ -691,7 +715,7 @@ DllExport int call_conv bt_range_next(CTXTdecl)
 	char *key = vlcurkey(tree.villa, NULL);
 	if(key == NULL)
 	{
-		printf("PREFIX: vlcurkey Error\n");
+		printf("RANGE: vlcurkey Error\n");
 		return FALSE;
 	}
 
@@ -718,3 +742,190 @@ DllExport int call_conv bt_range_next(CTXTdecl)
 
 	return read_canonical_term(CTXTdecl NULL, &strfile, 4);
 }
+
+
+
+/**************************
+ * MANUAL CURSOR MODE 
+ * This mode allows the programmer to manipulate a trees cursor.
+ **************************/
+ /* bt_mcm_init/1. Sets the cursorMode of the given tree to MCM. */
+
+DllExport int call_conv bt_mcm_init(CTXTdecl)
+{
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "MCM INIT Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int tree_index = p2c_int(tree_term);
+	// check that we can find an IndexTable in this range
+	if(tree_index >= nextIndex)
+	{
+		fprintf(stderr, "MCM INIT Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	// make sure to free up any old search keys
+	if(villas[tree_index].cursorMode == PREFIX_MODE)
+	{
+		free(villas[tree_index].prefix);
+	}
+	else if(villas[tree_index].cursorMode == RANGE_MODE)
+	{
+		free(villas[tree_index].prefix);
+		free(villas[tree_index].upperBound);
+	}
+
+	villas[tree_index].cursorMode = MANUAL_CURSOR_MODE;		
+
+	return TRUE;
+}
+
+/* Performs the basic cursor operation functions */
+/* NOT CALLED DIRECTLY from prolog. **/
+int mcm_cur_ops(CTXTdecl int operation)
+{
+	prolog_term key;
+	char *buff;
+	int size;
+	char *key_str;
+	char *value;
+	STRFILE strfile;
+
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "MCM FIRST Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int tree_index = p2c_int(tree_term);
+	// check that we can find an IndexTable in this range
+	if(tree_index >= nextIndex)
+	{
+		fprintf(stderr, "MCM FIRST Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	// verify the tree is in prefix mode
+	if(villas[tree_index].cursorMode != MANUAL_CURSOR_MODE)
+	{
+		fprintf(stderr, "MCM Error: Tree is not currently in MCM mode (%i).\n", villas[tree_index].cursorMode);
+		return FALSE;
+	}
+
+	switch(operation)
+	{
+		case 0: 		// first
+			if(!vlcurfirst(villas[tree_index].villa))
+			{
+				fprintf(stderr, "MCM FIRST Error: vlcurfirst Error.\n");
+				return FALSE;	
+			}		
+
+			return TRUE;
+		case 1:			// last
+			if(!vlcurlast(villas[tree_index].villa))
+			{
+				fprintf(stderr, "MCM FIRST Error: vlcurlast Error.\n");
+				return FALSE;	
+			}		
+
+			return TRUE;
+		case 2:			// next
+			if(!vlcurnext(villas[tree_index].villa))
+			{
+				fprintf(stderr, "MCM FIRST Error: vlcurnext Error.\n");
+				return FALSE;	
+			}		
+
+			return TRUE;
+		case 3:			// prev
+			if(!vlcurprev(villas[tree_index].villa))
+			{
+				fprintf(stderr, "MCM FIRST Error: vlcurprev Error.\n");
+				return FALSE;	
+			}		
+
+			return TRUE;
+
+		case 4: 		// jump
+			// get the key term
+			key = reg_term(CTXTdecl 2);
+			buff = canonical_term(CTXTdecl key, 1);
+			size = cannonical_term_size(CTXTdecl) + 1;
+			key_str = malloc(sizeof(char) * size);
+			strncpy(key_str, buff, size);
+
+			if(!vlcurjump(villas[tree_index].villa, key_str, -1, VL_JFORWARD))
+			{
+				fprintf(stderr, "MCM JUMP Error: vlcurjump Error.\n");
+				return FALSE;	
+			}
+			
+			return TRUE;
+		case 5: 		// jump_rev
+			// get the key term
+			key = reg_term(CTXTdecl 2);
+			buff = canonical_term(CTXTdecl key, 1);
+			size = cannonical_term_size(CTXTdecl) + 1;
+			key_str = malloc(sizeof(char) * size);
+			strncpy(key_str, buff, size);
+
+			if(!vlcurjump(villas[tree_index].villa, key_str, -1, VL_JBACKWARD))
+			{
+				fprintf(stderr, "MCM JUMP REV Error: vlcurjump Error.\n");
+				return FALSE;	
+			}
+			
+			return TRUE;
+
+		case 6:		// mcm_key
+		    value = vlcurkey(villas[tree_index].villa, NULL);
+			strfile.strcnt = strlen(value);
+			strfile.strptr = value;
+
+			return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+
+		case 7:		// mcm_val
+		    value = vlcurval(villas[tree_index].villa, NULL);
+			strfile.strcnt = strlen(value);
+			strfile.strptr = value;
+
+			return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+
+		default:
+			fprintf(stderr, "MCM ERROR: Unknown Operation (%i)\n", operation);
+			return FALSE;
+	}
+}
+
+/** bt_cm_first/1. Jump the cursor to the first record in the tree. **/
+DllExport int call_conv bt_mcm_first(CTXTdecl){ return mcm_cur_ops(CTXTdecl 0);  }
+/** bt_mcm_last/1. Jump the cursor to the last record in the tree. **/
+DllExport int call_conv bt_mcm_last(CTXTdecl) { return mcm_cur_ops(CTXTdecl 1);  }
+/** bt_mcm_next/1. Jump the cursor to the next successive record in the tree. **/
+DllExport int call_conv bt_mcm_next(CTXTdecl) { return mcm_cur_ops(CTXTdecl 2);	 }
+/** bt_mcm_prev/1. Jump the cursor to the previous successive record in the tree. **/
+DllExport int call_conv bt_mcm_prev(CTXTdecl) { return mcm_cur_ops(CTXTdecl 3);	 }
+/** bt_mcm_jump/1. Jump the cursor to the first entry matching the key (or closest match). **/
+DllExport int call_conv bt_mcm_jump(CTXTdecl) { return mcm_cur_ops(CTXTdecl 4);	 }
+/** bt_mcm_jump_rev/1. Jump the cursor to the last entry matching the key (or closest match). **/
+DllExport int call_conv bt_mcm_jump_rev(CTXTdecl) { return mcm_cur_ops(CTXTdecl 5);	 }
+
+/** bt_mcm_key/2. returns the key and the current point. **/
+DllExport int call_conv bt_mcm_key(CTXTdecl) { return mcm_cur_ops(CTXTdecl 6);	 }
+/** bt_mcm_val/2. returns the key and the current point. **/
+DllExport int call_conv bt_mcm_val(CTXTdecl) { return mcm_cur_ops(CTXTdecl 7);	 }
+
+
+
+
+
+
+

@@ -10,6 +10,12 @@
 :- import bt_getnext/2 from bt.
 :- import bt_drop/2 from bt.
 :- import bt_prefix_jump/2, bt_prefix_next/2 from bt.
+:- import bt_range_init/3, bt_range_next/2 from bt.
+:- import bt_mcm_init/1 from bt.
+:- import bt_mcm_first/1, bt_mcm_last/1 from bt.
+:- import bt_mcm_next/1, bt_mcm_prev/1 from bt.
+:- import bt_mcm_jump/2, bt_mcm_jump_rev/2 from bt.
+:- import bt_mcm_key/2, bt_mcm_val/2 from bt.
 
 %% This function will initialize a btree
 btinit(Pred/Arity, Argument, Handle) :- bt_init(Pred/Arity, Argument, Handle).
@@ -41,7 +47,7 @@ btgetnext(AnswerHandle, Value) :-
 %% In order to execute 2 prefix or range queries at the same time, 2 calls 
 %% to bt_init must be made (even if to the same tree).
 %% Call with:
-%% bt_prefix_jump(+TreeHandle, +KeyPrefix, -Value).
+%% btprefix(+TreeHandle, +KeyPrefix, -Value).
 btprefix(TreeHandle, Prefix, Value) :- 
 	bt_prefix_jump(TreeHandle, Prefix),
 	btprefixnext(TreeHandle, Value).
@@ -53,4 +59,109 @@ btprefixnext(TreeHandle, Value) :-
 			Value = Value0
 			; btprefixnext(TreeHandle, Value)
 	).
+
+%% btrange/4
+%% Jump the tree cursor to the first element whose key has the given prefix,
+%% and continue until the UpperBound has been reached.
+%% Note this method cannot be called simulaneously on a single tree handle.
+%% In order to execute 2 prefix or range queries at the same time, 2 calls 
+%% to bt_init must be made (even if to the same tree).
+%% Call with:
+%% btrange(+TreeHandle, +LowerBound, +UpperBound, -Value).
+btrange(TreeHandle, LowerBound, UpperBound, Value) :-
+	bt_range_init(TreeHandle, LowerBound, UpperBound),
+	btrangenext(TreeHandle, Value).
+
+btrangenext(TreeHandle, Value) :-
+	bt_range_next(TreeHandle, Value0),
+	(
+		Value = Value0 
+		; btrangenext(TreeHandle, Value)
+	).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Manual Cursor Mode (mcm)
+%% This allows the programmer to manually control the cursor.
+%%
+%% To use, first call btminit(+TreeHandle), then use the preds
+%% below to traverse the cursor
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% btminit/1. Initialize MCM on a tree handle. As with prefix
+%% and range queries, this ties up this tree handle so it cannot
+%% be used for anything else while processing in MCM.
+btminit(TreeHandle) :- bt_mcm_init(TreeHandle).
+
+%% btmfirst/1. Move the cursor to the first record in the tree.
+btmfirst(TreeHandle) :- bt_mcm_first(TreeHandle).
+
+%% btmlast/1. Move the cursor to the first record in the tree.
+btmlast(TreeHandle) :- bt_mcm_last(TreeHandle).
+
+%% btmnext/1. Move the cursor to the next consecutive record in the tree.
+btmnext(TreeHandle) :- bt_mcm_next(TreeHandle).
+
+%% btmprev/1. Move the cursor to the previous record in the tree.
+btmprev(TreeHandle) :- bt_mcm_prev(TreeHandle).
+
+%% btmjump/2. Move the cursor to the first record matching the key
+%% or the nearest match if there are no matches.
+btmjump(TreeHandle, Key) :- bt_mcm_jump(TreeHandle, Key).
+
+%% btmjump_rev/2. Move the cursor to the last record matching the key
+%% or the nearest match if there are no matches.
+btmjump_rev(TreeHandle, Key) :- bt_mcm_jump_rev(TreeHandle, Key).
+
+%% btmkey/2. Returns the current Key which the cursor is pointing to.
+%% Does not affect the cursor position.
+btmkey(TreeHandle, Key) :- bt_mcm_key(TreeHandle, Key).
+
+%% btmval/2. Returns the current Value which the cursor is pointing to.
+%% Does not affect the cursor position.
+btmval(TreeHandle, Val) :- bt_mcm_val(TreeHandle, Val).
+
+
+%% btgetall/2. Returns each value in the tree on at a time starting
+%% from the first indexed value to the last. NOTE: Uses MCM so it will
+%% tie up the tree handle for the time you are using it.
+btgetall(TreeHandle, Value) :- 
+	btminit(TreeHandle), 
+	btmfirst(TreeHandle),
+	btgetallnext(TreeHandle, Value).
+
+btgetallnext(TreeHandle, Value) :- 
+	btmval(TreeHandle, Value0),
+	( 
+		Value = Value0 ; 
+			btmnext(TreeHandle),
+			btgetallnext(TreeHandle, Value)
+	).
+
+
+%% btgetall_rev/2. Returns each value in the tree on at a time starting
+%% from the last indexed value to the first. NOTE: Uses MCM so it will
+%% tie up the tree handle for the time you are using it.
+btgetall_rev(TreeHandle, Value) :- 
+	btminit(TreeHandle), 
+	btmlast(TreeHandle),
+	btgetallprev(TreeHandle, Value).
+
+btgetallprev(TreeHandle, Value) :- 
+	btmval(TreeHandle, Value0),
+	( 
+		Value = Value0 ; 
+		btmprev(TreeHandle),
+		btgetallprev(TreeHandle, Value)
+	).
+
+
+
+
+
+
+
+
+
+
+
+
 

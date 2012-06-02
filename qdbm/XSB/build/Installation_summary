@@ -241,3 +241,80 @@ While compiling XSB/lib:
 While compiling XSB/syslib:
 -------------------- End --------------------------
 
+-e 
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+
+-e 	[gcc] io_builtins_xsb.c
+io_builtins_xsb.c: In function ‘fmt_read’:
+io_builtins_xsb.c:588: warning: format not a string literal and no format arguments
+io_builtins_xsb.c:666: warning: format not a string literal and no format arguments
+
+Making XSB executable /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb 
+
+-e 	[gcc] -o /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb
+-e 	[gcc] -o gpp
+
+
+
+----------------- Warnings ------------------------
+While compiling XSB/cmplib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/lib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/syslib:
+-------------------- End --------------------------
+
+-e 
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+
+-e 	[gcc] io_builtins_xsb.c
+io_builtins_xsb.c: In function ‘fmt_read’:
+io_builtins_xsb.c:588: warning: format not a string literal and no format arguments
+io_builtins_xsb.c:666: warning: format not a string literal and no format arguments
+
+Making XSB executable /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb 
+
+-e 	[gcc] -o /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb
+-e 	[gcc] -o gpp
+
+
+
+----------------- Warnings ------------------------
+While compiling XSB/cmplib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/lib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/syslib:
+-------------------- End --------------------------
+
+-e 
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+
+-e 	[gcc] io_builtins_xsb.c
+io_builtins_xsb.c: In function ‘fmt_read’:
+io_builtins_xsb.c:588: warning: format not a string literal and no format arguments
+io_builtins_xsb.c:666: warning: format not a string literal and no format arguments
+io_builtins_xsb.c: In function ‘read_canonical_term’:
+io_builtins_xsb.c:879: warning: ‘term’ may be used uninitialized in this function
+
+Making XSB executable /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb 
+
+-e 	[gcc] -o /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb
+-e 	[gcc] -o gpp
+
+
+
+----------------- Warnings ------------------------
+While compiling XSB/cmplib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/lib:
+-------------------- End --------------------------
+----------------- Warnings ------------------------
+While compiling XSB/syslib:
+-------------------- End --------------------------
+
