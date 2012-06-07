@@ -154,9 +154,37 @@ btgetallprev(TreeHandle, Value) :-
 	).
 
 
+%% btgetall_key/2. Returns each key in the tree on at a time starting
+%% from the first indexed value to the last. NOTE: Uses MCM so it will
+%% tie up the tree handle for the time you are using it.
+btgetall_key(TreeHandle, Value) :- 
+	btminit(TreeHandle), 
+	btmfirst(TreeHandle),
+	btgetallnext_key(TreeHandle, Value).
 
+btgetallnext_key(TreeHandle, Value) :- 
+	btmkey(TreeHandle, Value0),
+	( 
+		Value = Value0 ; 
+			btmnext(TreeHandle),
+			btgetallnext_key(TreeHandle, Value)
+	).
 
+%% btgetall_rev/2. Returns each key in the tree on at a time starting
+%% from the last indexed value to the first. NOTE: Uses MCM so it will
+%% tie up the tree handle for the time you are using it.
+btgetall_key_rev(TreeHandle, Value) :- 
+	btminit(TreeHandle), 
+	btmlast(TreeHandle),
+	btgetallnext_key_rev(TreeHandle, Value).
 
+btgetallnext_key_rev(TreeHandle, Value) :- 
+	btmkey(TreeHandle, Value0),
+	( 
+		Value = Value0 ; 
+			btmprev(TreeHandle),
+			btgetallnext_key_rev(TreeHandle, Value)
+	).
 
 
 

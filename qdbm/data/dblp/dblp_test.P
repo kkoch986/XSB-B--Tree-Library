@@ -82,7 +82,7 @@ testbtquery() :-
 
 buildtree(Handle) :- 
 	(
-		Y = '2005',
+		Y = '2004',
 		queryrule(X,T,Y,A,K), 
 		btinsert(Handle, paper(X,T,Y,A,K)),
 		fail 
