@@ -1,0 +1,24 @@
+---------------------------------------------
+------------- Load Dyn, to assert. ----------
+loading cputime:  77.4420
+loading walltime: 79.8220
+computing cputime:  2.2620
+computing walltime: 2.2670
+second query cputime:  2.2550
+second query walltime: 2.2570
+total cputime: 81.9590
+total walltime: 84.3460
+---------------------------------------------
+
+---------------------------------------------
+-- Load Dyn, to assert and create B+ Tree. --
+initializing cputime:  0.0000
+initializing wallitme: 0.0090
+loading cputime:  77.4150
+loading walltime: 79.7020
+building tree cputime:  3.5300
+building tree walltime: 6.2630
+---------------------------------------------
+Total Building cputime:  80.9450
+Total Building wallitme: 85.9740
+---------------------------------------------

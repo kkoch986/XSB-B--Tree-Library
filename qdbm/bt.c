@@ -364,7 +364,9 @@ DllExport int call_conv bt_get(CTXTdecl)
 	printf("Found Value: %s\n", value);
 
 	// unify with the return argument
-	return read_canonical_term(CTXTdecl NULL, &strfile, 3);
+	read_canonical_term(CTXTdecl NULL, &strfile, 3);
+
+	return TRUE;
 }
 
 /**
@@ -493,7 +495,9 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 	strfile.strcnt = strlen(value);
 	strfile.strptr = value;
 
-	return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+	read_canonical_term(CTXTdecl NULL, &strfile, 4);
+
+	return TRUE;
 }
 
 /*********************************************************/
@@ -614,7 +618,8 @@ DllExport int call_conv bt_prefix_next(CTXTdecl)
 
 	vlcurnext(tree.villa);
 
-	return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+	read_canonical_term(CTXTdecl NULL, &strfile, 4);
+	return TRUE;
 }
 
 
@@ -740,7 +745,8 @@ DllExport int call_conv bt_range_next(CTXTdecl)
 
 	vlcurnext(tree.villa);
 
-	return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+	read_canonical_term(CTXTdecl NULL, &strfile, 4);
+	return TRUE;
 }
 
 
@@ -890,14 +896,16 @@ int mcm_cur_ops(CTXTdecl int operation)
 			strfile.strcnt = strlen(value);
 			strfile.strptr = value;
 
-			return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+			read_canonical_term(CTXTdecl NULL, &strfile, 4);
+			return TRUE;
 
 		case 7:		// mcm_val
 		    value = vlcurval(villas[tree_index].villa, NULL);
 			strfile.strcnt = strlen(value);
 			strfile.strptr = value;
 
-			return read_canonical_term(CTXTdecl NULL, &strfile, 4);
+			read_canonical_term(CTXTdecl NULL, &strfile, 4);
+			return TRUE;
 
 		default:
 			fprintf(stderr, "MCM ERROR: Unknown Operation (%i)\n", operation);

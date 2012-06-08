@@ -12,8 +12,8 @@ measureTime(Q, T, WT) :-
 test() :- 
     open('result.txt', append, Output),
 	measureTime(load_dyn('dblp.data'), LoadT, LoadWT),
-	measureTime((queryrule(_,_,'1994',_,_), fail; true), T, WT),
-	measureTime((queryrule(_,_,'1994',_,_), fail; true), T2, WT2),
+	measureTime((queryrule(_,_,_,_,_), fail; true), T, WT),
+	measureTime((queryrule(_,_,_,_,_), fail; true), T2, WT2),
 	TotalTimeT is LoadT + T + T2, TotalTimeWT is LoadWT + WT + WT2,
 	writeln(Output, '---------------------------------------------'), 
     writeln(Output, '------------- Load Dyn, to assert. ----------'), 
@@ -62,7 +62,7 @@ testbtcreate() :-
 testbtquery() :- 
 	%% now try and make a query into the B+ tree
 	measureTime(btinit(paper/5, 3, Handle2), ReinitT, ReinitWT),
-	measureTime((btget(Handle2, '1994', _ ) , fail ; true), QueryT, QueryWT),
+	measureTime((btgetall(Handle2, _ ) , fail ; true), QueryT, QueryWT),
 	%% write out the results
 	open('result.txt', append, Output),
 	writeln(Output, '---------------------------------------------'), 
@@ -82,7 +82,6 @@ testbtquery() :-
 
 buildtree(Handle) :- 
 	(
-		Y = '2004',
 		queryrule(X,T,Y,A,K), 
 		btinsert(Handle, paper(X,T,Y,A,K)),
 		fail 

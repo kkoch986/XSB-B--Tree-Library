@@ -1182,7 +1182,7 @@ Integer read_canonical_term(CTXTdeclc FILE *filep, STRFILE *instr, int return_lo
 	}
       case TK_EOF:
 	free_term_buffer();
-	if (isnonvar(prologvar) && return_location_code != 3 && return_location_code != 4)
+	if (isnonvar(prologvar))
 	  xsb_abort("[READ_CANONICAL] Argument must be a variable");
 	unify(CTXTc prologvar,makestring(string_find("end_of_file",1)));
 	return 0;
@@ -1197,7 +1197,7 @@ Integer read_canonical_term(CTXTdeclc FILE *filep, STRFILE *instr, int return_lo
 	return read_can_error(CTXTc filep,instr,prevchar,prologvar,findall_chunk_index);
 
       if (opstk[0].typ != TK_VAR) {  /* if a variable, then a noop */
-	if (isnonvar(prologvar) && return_location_code != 3 && return_location_code != 4)
+	if (isnonvar(prologvar))
 	  xsb_abort("[READ_CANONICAL] Argument must be a variable");
 	term = opstk[0].op;
 	
@@ -1245,10 +1245,7 @@ Integer read_canonical_term(CTXTdeclc FILE *filep, STRFILE *instr, int return_lo
   mem_dealloc(funstk,funstk_size*sizeof(struct funstktype),READ_CAN_SPACE); funstk = NULL;
   opstk_size = 0; funstk_size = 0;
       }
-
-      if(return_location_code == 3 || return_location_code == 4)
-        return unify(CTXTc prologvar, term);
-      else
+      
         return retpscptr;
     }
   }

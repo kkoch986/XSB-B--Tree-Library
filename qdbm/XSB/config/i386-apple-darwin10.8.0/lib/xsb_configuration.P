@@ -45,7 +45,7 @@ xsb_configuration(compiler, 'gcc').
 xsb_configuration(compiler_flags, ' -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  ').
 xsb_configuration(loader_flags, '  -lm').
 
-xsb_configuration(build_date, 'Thu May 24 20:26:15 EDT 2012').
+xsb_configuration(build_date, 'Thu Jun  7 22:56:22 EDT 2012').
 
 /* Packages */
 

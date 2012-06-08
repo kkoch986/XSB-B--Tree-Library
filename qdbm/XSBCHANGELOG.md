@@ -1,21 +1,6 @@
 CHANGELOG
 =========
 
-## Preface
-
-These are changes that I have made to the xsb system as part of my work on indexing and B+ Trees. - Ken Koch
-
-## DI (Just In Time Indexing)
-Although this project is not completed, there is the implementation of a potentially useful instruction to catch the fallthrough of a SOB indexing instruction.
-
-Essentially, this can tell you where to place an index if you do not already have one in dynamically asserted code.
-
-### Installing
-
-To Install, perform the following modifications (line numbers according to most recent XSB build, unmodified ( [3.3.6, found here](http://xsb.sourceforge.net/downloads/XSB336.tar.gz)) )
-
-... todo ....
-
 ## B+ Tree Library
 
 Still a major work in progress, using this file to keep track of changes to XSB system files as i make them.
@@ -24,7 +9,7 @@ Still a major work in progress, using this file to keep track of changes to XSB 
 
 These are changes that need to be made to XSB and compiled using ./makexsb.
 
-1. __emu/io_builtins_xsb.c__ \[Line 836\]
+1. __emu/io_builtins_xsb.c__ \[Line 836\] or \[871\]
 
 Change:
 
@@ -40,29 +25,6 @@ To:
   	} 
   	else return (Cell)NULL;
 
-1. __emu/io_builtins_xsb.c__ \[Lines 1185 and 1200\]
-
-Change:
-
-    if (isnonvar(prologvar))
-
-To:
-
-    if (isnonvar(prologvar) && return_location_code != 3 && return_location_code != 4)
-
-
-1. __emu/io_builtins_xsb.c__ \[Line 1249\]
-
-Change:
-
-    return retpscptr;
-
-To:
-
-  	if(return_location_code == 3 || return_location_code == 4)
-      return unify(CTXTc prologvar, term);
-    else
-      return retpscptr;
 
 1. __emu/io_builtins_xsb.h__ \[End Of File\]
 
