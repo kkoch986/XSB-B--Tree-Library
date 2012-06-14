@@ -4,9 +4,10 @@
 
 :- import bt_init/3 from bt.
 :- import bt_close/1 from bt.
+:- import bt_size/2 from bt.
 :- import bt_insert/2 from bt.
 :- import bt_get/3 from bt.
-:- import bt_getl/3 from bt.
+:- import bt_getl/2 from bt.
 :- import bt_getnext/2 from bt.
 :- import bt_drop/2 from bt.
 :- import bt_prefix_jump/2, bt_prefix_next/2 from bt.
@@ -23,6 +24,9 @@ btinit(Pred/Arity, Argument, Handle) :- bt_init(Pred/Arity, Argument, Handle).
 %% Close a B+ Tree.
 btclose(Handle) :- bt_close(Handle).
 
+%% Return the size of the B+ Tree in Handle
+btsize(Handle, Size) :- bt_size(Handle, Size).
+
 %% Drop a B+ Tree.
 btdrop(Pred/Arity, Argument) :- bt_drop(Pred/Arity, Argument).
 
@@ -31,14 +35,15 @@ btinsert(Handle, Term) :- bt_insert(Handle, Term).
 
 %% Non-Deterministically find terms that match the key exactly.
 btget(TreeHandle, Key, Value) :- 
-	bt_getl(TreeHandle, Key, AnswerHandle),
-	btgetnext(AnswerHandle, Value).
+	bt_getl(TreeHandle, Key),
+	btgetnext(TreeHandle, Value0), 
+	Value = Value0.
 
-btgetnext(AnswerHandle, Value) :- 
-	bt_getnext(AnswerHandle, Value0),
+btgetnext(TreeHandle, Value) :- 
+	bt_getnext(TreeHandle, Value0),
 	(
 		Value = Value0 
-		; btgetnext(AnswerHandle, Value)
+		; btgetnext(TreeHandle, Value)
 	).
 
 %% btprefix/3
@@ -117,7 +122,9 @@ btmkey(TreeHandle, Key) :- bt_mcm_key(TreeHandle, Key).
 
 %% btmval/2. Returns the current Value which the cursor is pointing to.
 %% Does not affect the cursor position.
-btmval(TreeHandle, Val) :- bt_mcm_val(TreeHandle, Val).
+%% Notice the use of Val0, from the latest version, calls to the c level
+%% functions can be made only with variables when values are returned.
+btmval(TreeHandle, Val) :- bt_mcm_val(TreeHandle, Val0), Val = Val0.
 
 
 %% btgetall/2. Returns each value in the tree on at a time starting
