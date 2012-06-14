@@ -1,0 +1,67 @@
+
+
+            INSTALLATION SUMMARY
+            --------------------
+
+XSB Version:	   3.3.6
+Code name:	   Pignoletto
+Release date:	   2012-01-02
+Configuration:	   i386-apple-darwin10.8.0
+Installation date: Thu Jun  7 22:56:31 EDT 2012
+
+  Build process is looking for XSB sources in:	  /Users/kenkoch/research/qdbm/XSB
+  XSB should be installed in:			  /Users/kenkoch/research/qdbm/XSB
+  Configuration-specific executables go in:	  /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin
+  Configuration-specific libraries go in:	  /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/lib
+  Object code goes in:				  /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/saved.o
+  Site-specific code goes in:			  /Users/kenkoch/research/qdbm/XSB/site
+  Site configuration-specific code goes in:	  /Users/kenkoch/research/qdbm/XSB/site/config/i386-apple-darwin10.8.0
+  XSB will be built with:			  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+  builtin.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+  loader_xsb.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+  emuloop.c will be built with: 		  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+  tr_utils.c will be built with:		  gcc  -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+  Loader flags: 				  -lm
+  Compilation mode:				  optimal
+  XSB abstract machine: 			  slg-wam
+  XSB scheduling strategy:			  local
+  Garbage Collection Stress-Test:		  no
+  Jumptable-based emulator loop:		  yes
+  Demand support:                                 no
+
+  Support for modular database drivers: 	  no
+  -- These drivers can also be configured later.
+  Native support for Oracle:			  no
+  Support for the old ODBC driver:		  no
+
+  Java compiler:                                  /usr/bin/javac
+  Support for InterProlog's native engine:   	  no
+  -- JDK may not have been installed or
+  -- JAVA_HOME not set. You will still be able
+  -- to use InterProlog's subprocess engine.
+
+  POSIX regexp matching libraries:                yes
+  POSIX wildcard matching libraries:              yes
+
+  Curl support (HTTP protocol library):           yes
+  Curl C flags:        	                          -g -O2
+  Curl loader flags:                              
+
+  XPath support:				  no
+  PCRE support (Perl pattern matching):           yes
+  PCRE C flags:        	                          -g -O2
+  PCRE loader flags:                              
+
+
+
+-e 
+Compiling XSB with gcc using -O3 -fno-strict-aliasing  -faltivec -fPIC -Wall -pipe  
+
+
+Making XSB executable /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb 
+
+-e 	[gcc] -o /Users/kenkoch/research/qdbm/XSB/config/i386-apple-darwin10.8.0/bin/xsb
+-e 	[gcc] -o gpp
+
+
+

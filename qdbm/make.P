@@ -1,0 +1,8 @@
+
+%% // to build: g++ test.c -o test -I qdbm/plus/ -lxqdbm -lqdbm
+
+:- import platform/1 from shell.
+
+clean :- shell('rm -f *.dylib *.xwam *.o *.so').
+scrub :- shell('rm -rf db_*').
+scrub(DbName) :- str_cat('rm -f ', DbName, Script), shell(Script).
