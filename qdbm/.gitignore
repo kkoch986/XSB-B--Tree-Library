@@ -1,0 +1,4 @@
+*.xwam
+*.dylib
+*.o
+*.so
