@@ -1,6 +1,6 @@
 # qdbm and xsb #
-qdbm/
-XSB/
+qdbm/qdbm*
+qdbm/XSB/*
 
 
 # Compiled source #
