@@ -1,7 +1,0 @@
-
-
-rt() :- 
-	btdrop(paper/5,3),
-	btinit(paper/5, 3, X),
-	btinsert(X, paper(node12eo5mnsvx74579,'Forbidden subgraphs in connected graphs.','2004','Lo?s Thimonier','journals/tcs/RavelomananaT04')),
-	btclose(X).
