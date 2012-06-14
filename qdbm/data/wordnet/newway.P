@@ -1,0 +1,121 @@
+?- ['../../bt'], ['../../bt_p'].
+
+%% Interface to WordNet using B+ Trees
+:- import load_dync/2 from consult.
+
+
+measureTime(Q, T, WT) :-
+    walltime(WT0),
+	cputime(T0),
+	call(Q),
+	cputime(T1),
+	walltime(WT1),
+	T is T1 - T0,
+	WT is WT1 - WT0.
+
+%% Find all SynSets
+%% The approach here is to build a tree of s/6 indexed on the Synset ID.
+%% Later it would be ideal to make a hash table index for quick lookups of
+%% synset IDs
+
+buildSynsetTree() :- 
+	btdrop(s/6,1),
+	%% Load the synset data from WordNet
+	walltime(LoadT0),
+	load_dync('wn_s.pl',a),
+	walltime(LoadT1),
+	LoadT is LoadT1 - LoadT0,
+	%% Build the Tree
+	walltime(BuildT0),
+	btinit(s/6, 1, Handle), 
+	buildSynsetTreeHelper(Handle),
+	btclose(Handle),
+	walltime(BuildT1),
+	BuildT is BuildT1 - BuildT0,
+	write('allSameSynset\nloading time:\n'),write(LoadT),nl,write('building time:\n'),write(BuildT),nl.
+
+buildSynsetTreeHelper(Handle) :-
+	(
+		s(SynsetId, WNum, Word, SSType, SenseNum, TagCount), 
+		btinsert(Handle, s(SynsetId, WNum, Word, SSType, SenseNum, TagCount)),
+		fail
+	) ; true.
+
+
+%% AllSynsets (note: this requires 2 calls to btinit on the same tree), 
+testAllSynsets() :- 
+	walltime(T0),
+	btinit(s/6, 1, WordsHandle),
+	btinit(s/6, 1, SynsetHandle),
+	walltime(T1),
+	measureTime(testAllSynsets_Test(WordsHandle, SynsetHandle), _T, WT),
+	Time is T1 - T0,
+	write('Loading Time (wall): '), writeln(Time),
+	write('Computing Time (wall): '), writeln(WT).
+
+testAllSynsets_Test(WordsHandle, SynsetHandle) :-
+	(
+		findAllWords(WordsHandle, s(SynsetId, _, _Word1, _, _, _)),
+		(
+			findWordWithSynsetId(SynsetHandle, SynsetId, _Word2), 
+			%% write(_Word1), write(', '), writeln(_Word2),
+			fail ; true
+		), fail ; true
+	).
+
+
+
+%% To test if 2 words are in the same synset, we have to traverse the whole tree until we find the 
+%% word (since we dont have an index on the yet). If you have the synset id, you should just call
+%% findWordWithSynsetId using the synset and each word (or just the second word if you know the first
+%% word is in that synset)
+sameSynset(Handle, Word1, Word2) :- 
+	%% Get the SynsetId of Word1
+	findWord(Handle, Word1, s(SynsetId, _, _, _, _, _)),
+	%% now jump the tree to that synset id and scan through the words
+	findWordWithSynsetId(Handle, SynsetId, Word2).
+
+%% will check if the current tree value matches on the word field (using manual cursor mode).
+%% If it matches, it will return, otherwise it will advance the cursor and continue.	
+%% This function has ONLY 2 call modes:
+%%	1. findWord(+Handle, +Word, +Row) -- succeeds if the 2 words are in the same SynSets
+%%	2. findWord(+Handle, +Word, -Row) -- returns every entry that is in the same synset as the first word.
+findWord(Handle, Word, Row) :-
+	btminit(Handle),
+	btmfirst(Handle),
+	findWord_Helper(Handle, Word, Row).
+
+findWord_Helper(Handle, Word, Row) :-
+	%% NOTE: only Word is bound here...
+	Target = s(_, _, Word, _, _, _),	
+	(
+		btmval(Handle, Target) 
+		->  Row = Target
+		; btmnext(Handle), 
+			findWord_Helper(Handle, Word, Row)
+	).
+
+%% Looks up the given synset (using btget)
+findWordWithSynsetId(Handle, SynsetId, Word) :- 
+	btget(Handle, SynsetId, Tester),
+	Tester = s(SynsetId, _, Word, _, _, _).
+
+%% returns every word 
+findAllWords(Handle, Row) :-
+	btminit(Handle),
+	btmfirst(Handle),
+	findAllWords_Helper(Handle, Row).
+
+findAllWords_Helper(Handle, Row) :-
+	btmval(Handle, Row0),
+	(
+		Row = Row0 ; 
+		btmnext(Handle),
+		findAllWords_Helper(Handle, Row)
+	).
+
+
+
+
+
+
