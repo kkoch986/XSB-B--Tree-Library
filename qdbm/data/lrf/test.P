@@ -1,5 +1,5 @@
 
-
+:- import for/3 from basics.
 
 testOldWay() :-
 	walltime(LT0),
@@ -7,6 +7,25 @@ testOldWay() :-
 	walltime(LT1),
 	walltime(CT0),
 	((p(_,_), fail) ; true),
+	walltime(CT1),
+	LT is LT1 - LT0,
+	CT is CT1 - CT0,
+	write('Loading Time: '), writeln(LT),
+	write('Computing Time: '), writeln(CT).
+
+oldWayRange() :-
+	walltime(LT0),
+	load_dyn('upper1000000_pattern(i,i)_xsb'),
+	walltime(LT1),
+	walltime(CT0),
+	(
+		(
+			for(X, 10000, 40000), p(X,_Y), 
+			%% write(X), write(', '), writeln(_Y), 
+			fail
+		) 
+		; true
+	),
 	walltime(CT1),
 	LT is LT1 - LT0,
 	CT is CT1 - CT0,
@@ -57,6 +76,24 @@ queryAllPTree_Helper(Handle) :-
 		%%writeln(_Value), 
 		fail 
 	) ; true.
+
+
+bptreerange() :- 
+	walltime(LT0),
+	btinit(p/2,1,Handle),
+	walltime(LT1),
+	walltime(CT0),
+	(
+		(
+			btrange(Handle, 10000, 40000, _), fail 
+		) ; true
+	),
+	walltime(CT1),
+	LT is LT1 - LT0,
+	CT is CT1 - CT0,
+	write('Loading time: '), writeln(LT),
+	write('Computing Time: '), writeln(CT).
+
 
 
 

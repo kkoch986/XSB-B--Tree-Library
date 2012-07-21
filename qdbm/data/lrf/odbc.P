@@ -1,0 +1,27 @@
+generate(0):-
+       !.
+generate(N):-
+       write('INSERT INTO p VALUES('),
+       write(N),
+       write(','),
+       write(N),
+       write(');'),
+       nl,
+       N1 is N-1,
+       generate(N1),
+       !.
+
+% ?- tell('test.sql'), generate(1000000), told.
+
+:- import odbc_open/2, odbc_close/1, odbc_sql/4 from odbc_call.
+
+test_odbc:-
+       odbc_open('DRIVER={myodbc};SERVER=localhost;PORT=3306;DATABASE=test;UID=root;PWD=lolex',Handler1),
+       walltime(T1),
+       ( odbc_sql(Handler1,[],'SELECT i1,i2 FROM p;', [I1,I2]),
+               writeln(p(I1,I2)),
+               fail ; true ),
+       walltime(T2),
+       T3 is T2 - T1,
+       write('Time: '), write(T3), nl,
+       odbc_close(Handler1).
