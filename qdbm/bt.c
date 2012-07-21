@@ -25,7 +25,7 @@
 #define DBNAME "xsbdb"
 
 static const int DEBUG = 0;
-void dprintf(char *message, ... )
+void debugprintf(char *message, ... )
 {
 	if(DEBUG == 1)
 	{
@@ -92,7 +92,7 @@ DllExport int call_conv bt_init(CTXTdecl)
 	if(villas == NULL)
 	{
 		villas = malloc(sizeof(struct IndexTable) * currentSize);
-		dprintf("First Initialization\n");
+		debugprintf("First Initialization\n");
 	}
 	if(nextIndex >= currentSize)
 	{
@@ -103,7 +103,7 @@ DllExport int call_conv bt_init(CTXTdecl)
 		free(villas);
 		villas = newtable;
 
-		dprintf("Expanding Villa Table Size to: %i\n", currentSize);
+		debugprintf("Expanding Villa Table Size to: %i\n", currentSize);
 	}
 
 	/* compute the DB name */
@@ -137,7 +137,7 @@ DllExport int call_conv bt_init(CTXTdecl)
 	villas[nextIndex].open = 1;
 
 	int size = vlrnum(villas[nextIndex].villa);
-	dprintf("B+ Tree (%s) Size: %i\n", db_name, size);
+	debugprintf("B+ Tree (%s) Size: %i\n", db_name, size);
 
 	c2p_int(CTXTdecl nextIndex, handle);
 
@@ -237,9 +237,9 @@ DllExport int call_conv bt_insert(CTXTdecl)
 	// ---------------------------------------------
 	if(DEBUG == 1)
 	{
-		dprintf("Insert Term: (Key: %s, Value: %s)\n", key_str, val_str);
+		debugprintf("Insert Term: (Key: %s, Value: %s)\n", key_str, val_str);
 		int lsize = vlrnum(handle.villa);
-		dprintf("B+ Tree (%s) Size: %i\n", handle.predname, lsize);
+		debugprintf("B+ Tree (%s) Size: %i\n", handle.predname, lsize);
 	}
 	// ---------------------------------------------
 	// ---------------------------------------------
@@ -316,7 +316,7 @@ DllExport int call_conv bt_drop(CTXTdecl)
 				if(i.arity == arity && i.argnum == indexon)
 				{
 					// match, fails
-					dprintf("This Tree has an open handle(%i), please close all handles before dropping the tree.\n", x);
+					debugprintf("This Tree has an open handle(%i), please close all handles before dropping the tree.\n", x);
 					return FALSE;
 				}
 			}
@@ -328,7 +328,7 @@ DllExport int call_conv bt_drop(CTXTdecl)
 		return TRUE;
 	else
 	{
-		dprintf("WARNING: Unable to drop tree (%s), maybe it is missing?\n", db_name);
+		debugprintf("WARNING: Unable to drop tree (%s), maybe it is missing?\n", db_name);
 		return TRUE;
 	}
 }
@@ -380,7 +380,7 @@ DllExport int call_conv bt_get(CTXTdecl)
 	strfile.strcnt = valsize;
 	strfile.strptr = value;
 
-	dprintf("Found Value: %s\n", value);
+	debugprintf("Found Value: %s\n", value);
 
 	// unify with the return argument
 	read_canonical_term(CTXTdecl NULL, &strfile, 3);
@@ -496,23 +496,23 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 
 	// if(found == 0)
 	// {
-	// 	dprintf("Unable to find CBL %i\n", handle);
+	// 	debugprintf("Unable to find CBL %i\n", handle);
 	// 	return FALSE;
 	// }
 
-	// dprintf("FOUND CBL: %i\n", traveller->index);
+	// debugprintf("FOUND CBL: %i\n", traveller->index);
 
 	// retrieve the next value from the CBL
 	// if(traveller->list == NULL) 
 	// {
-	// 	dprintf("List Empty (never full).\n");
+	// 	debugprintf("List Empty (never full).\n");
 	// 	return FALSE;
 	// }
 	char *value = cblistpop(tree.activeList, NULL);
 
 	if(value == NULL)
 	{
-		dprintf("List empty.\n");
+		debugprintf("List empty.\n");
 		// // this list is now empty, remove it
 		// if(traveller->prev != NULL)
 		// 	traveller->prev->next = traveller->next;
@@ -631,7 +631,7 @@ DllExport int call_conv bt_prefix_next(CTXTdecl)
 	char *key = vlcurkey(tree.villa, NULL);
 	if(key == NULL)
 	{
-		dprintf("PREFIX: vlcurkey Error\n");
+		debugprintf("PREFIX: vlcurkey Error\n");
 		return FALSE;
 	}
 
@@ -757,7 +757,7 @@ DllExport int call_conv bt_range_next(CTXTdecl)
 	char *key = vlcurkey(tree.villa, NULL);
 	if(key == NULL)
 	{
-		dprintf("RANGE: vlcurkey Error\n");
+		debugprintf("RANGE: vlcurkey Error\n");
 		return FALSE;
 	}
 
@@ -867,7 +867,7 @@ int mcm_cur_ops(CTXTdecl int operation)
 		case 0: 		// first
 			if(!vlcurfirst(villas[tree_index].villa))
 			{
-				dprintf("MCM FIRST Error: vlcurfirst Error.\n");
+				debugprintf("MCM FIRST Error: vlcurfirst Error.\n");
 				return FALSE;	
 			}		
 
@@ -875,7 +875,7 @@ int mcm_cur_ops(CTXTdecl int operation)
 		case 1:			// last
 			if(!vlcurlast(villas[tree_index].villa))
 			{
-				dprintf("MCM FIRST Error: vlcurlast Error.\n");
+				debugprintf("MCM FIRST Error: vlcurlast Error.\n");
 				return FALSE;	
 			}		
 
@@ -883,7 +883,7 @@ int mcm_cur_ops(CTXTdecl int operation)
 		case 2:			// next
 			if(!vlcurnext(villas[tree_index].villa))
 			{
-				dprintf("MCM FIRST Error: vlcurnext Error.\n");
+				debugprintf("MCM FIRST Error: vlcurnext Error.\n");
 				return FALSE;	
 			}		
 
@@ -891,7 +891,7 @@ int mcm_cur_ops(CTXTdecl int operation)
 		case 3:			// prev
 			if(!vlcurprev(villas[tree_index].villa))
 			{
-				dprintf("MCM FIRST Error: vlcurprev Error.\n");
+				debugprintf("MCM FIRST Error: vlcurprev Error.\n");
 				return FALSE;	
 			}		
 
