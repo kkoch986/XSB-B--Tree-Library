@@ -13,15 +13,114 @@ generate(N):-
 
 % ?- tell('test.sql'), generate(1000000), told.
 
-:- import odbc_open/2, odbc_close/1, odbc_sql/4 from odbc_call.
+:- import odbc_open/3, odbc_open/4, odbc_close/0, odbc_close/1, odbc_sql/4, odbc_import/2, odbc_insert/2 from odbc_call.
 
+build_odbc(X) :- 
+	odbc_open(myodbc, root, lolex),
+	odbc_import(p(v1, v2), p),
+	odbc_insert(p_ins(V1, V2), (p(V1, V2))),
+	walltime(T1),
+	build_odbc_iterate(X),
+	walltime(T2),
+	Time is T2 - T1,
+	write('Inserted '), write(X), write(' entries in '), write(Time), writeln(' seconds'),
+	odbc_close.
+	
+build_odbc_iterate(0) :- !.
+build_odbc_iterate(X) :-
+	p_ins(X, X),
+	Next is X - 1,
+	build_odbc_iterate(Next).
+	
 test_odbc:-
-       odbc_open('DRIVER={myodbc};SERVER=localhost;PORT=3306;DATABASE=test;UID=root;PWD=lolex',Handler1),
+       odbc_open(myodbc, root, lolex, Handler1),
        walltime(T1),
-       ( odbc_sql(Handler1,[],'SELECT i1,i2 FROM p;', [I1,I2]),
-               writeln(p(I1,I2)),
+       ( odbc_sql(Handler1,[],'SELECT v1,v2 FROM p;', [_I1,_I2]),
                fail ; true ),
        walltime(T2),
        T3 is T2 - T1,
        write('Time: '), write(T3), nl,
        odbc_close(Handler1).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Testers for B+ Tree Lib %%%%%%%%%
+?- ['../../bt'], ['../../bt_p'].
+
+build_btree(X) :- 
+	btdrop(p/2,1),
+	walltime(T1),
+	btinit(p/2, 1, Handle),
+	build_btree_iterate(X, Handle),
+	walltime(T2),
+	Time is T2 - T1,
+	write('Built B+ Tree with '), write(X), write(' elements in '), write(Time), writeln(' seconds').
+
+build_btree_iterate(0, Handle) :- btclose(Handle), !.
+build_btree_iterate(X, Handle) :- 
+	btinsert(Handle, p(X, X)),
+	Next is X - 1,
+	build_btree_iterate(Next, Handle).
+
+test_btree :-
+	walltime(T1),	
+	btinit(p/2, 1, Handle),
+	(
+		btgetall(Handle, p(_, _)), fail 
+		; true
+	),
+	walltime(T2),
+	Time is T2 - T1,
+	btsize(Handle, Size),
+	btclose(Handle),
+	write('Queried '), write(Size), write(' records in '), write(Time), writeln(' seconds').
+ 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Testing for load_dny speeds 	%%%
+
+generateP(X) :-
+	tell('ld.P'),
+	generateP_i(X),
+	told,
+	writeln('start timing...'),
+	walltime(T1),
+	load_dyn('ld.P'),
+	walltime(T2),
+	Time is T2 - T1,
+	write('Load_Dyn-ed file with '), write(X), write(' elements in '), write(Time), writeln(' seconds').
+
+generateP_i(0) :- !.
+generateP_i(X) :-
+	write('p('), write(X), write(','), write(X), write(').'), nl,
+	Next is X - 1,
+	generateP_i(Next).
+
+testP :- 
+	walltime(T1),
+	( p(_, _), fail ; true ),
+	walltime(T2),
+	Time is T2 - T1,
+	write('Queried for p/2 in '), write(Time), writeln(' seconds').
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
