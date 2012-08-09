@@ -1,0 +1,16 @@
+
+
+:- import load_nquad_file/1, get_next_result/1 from nq_parse.
+
+nqff(File, R) :- 
+	load_nquad_file(File),
+	nqffn(R).
+
+nqffn(R) :-
+	get_next_result(R1),
+	(
+		R = R1 ; nqffn(R)
+	).
+
+nqload(File) :- load_nquad_file(File).
+nqnext(R) :- get_next_result(R1), ( R1 = R ; nqnext(R)).

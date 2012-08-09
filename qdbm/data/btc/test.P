@@ -1,0 +1,30 @@
+
+?- [nqparse], ['../../bt'], ['../../bt_p'].
+
+test(R) :- nqff('data.nq', R).
+tb() :- buildbt('data.nq').
+
+buildbt(File) :-
+	btdrop(quad/4, 1),
+	appendbt(File).
+
+appendbt(File) :-
+	walltime(T1),
+	nqload(File),
+	walltime(T2),
+	btinit(quad/4, 1, Handle),
+	btsize(Handle, InitialSize),
+	(
+		nqnext(R),
+		%writeln(R),
+		btinsert(Handle, R ),
+		fail ; true
+	),
+	btsize(Handle, Size),
+	walltime(T3),
+	ParseTime is T2 - T1,
+	BuildTime is T3 - T2,
+	Added is Size - InitialSize,
+	write('Added '), write(Added), writeln(' entries.'),
+	write('Parsing Time: '), write(ParseTime), writeln(' seconds.'),
+	write('Building Time: '), write(BuildTime), writeln(' seconds.').
