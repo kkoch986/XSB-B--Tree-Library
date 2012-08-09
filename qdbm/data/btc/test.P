@@ -1,8 +1,33 @@
 
 ?- [nqparse], ['../../bt'], ['../../bt_p'].
 
-test(R) :- nqff('data.nq', R).
-tb() :- buildbt('data.nq').
+tb() :- 
+	% parse everything
+	walltime(T1),
+	nqparse('projects/btc-2012/datahub/data-0.nq'),
+	nqparse('projects/btc-2012/datahub/data-1.nq'),
+	nqparse('projects/btc-2012/datahub/data-2.nq'),
+	nqparse('projects/btc-2012/datahub/data-3.nq'),
+	nqparse('projects/btc-2012/datahub/data-4.nq'),
+	walltime(T2),
+	ParseTime is T2 - T1,
+	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
+	walltime(T3),
+	btinit(quad/4, 1, Handle),
+	btsize(Handle, InitialSize),
+	(
+		nqnext(R),
+		btinsert(Handle, R ),
+		fail ; true
+	),
+	btsize(Handle, Size),
+	btclose(Handle),
+	walltime(T4),
+	BuildTime is T4 - T3,
+	Added is Size - InitialSize,
+	write('Added '), write(Added), writeln(' entries.'),
+	write('Parsing Time: '), write(ParseTime), writeln(' seconds.'),
+	write('Building Time: '), write(BuildTime), writeln(' seconds.').
 
 buildbt(File) :-
 	btdrop(quad/4, 1),
