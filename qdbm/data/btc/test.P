@@ -21,6 +21,7 @@ appendbt(File) :-
 		fail ; true
 	),
 	btsize(Handle, Size),
+	btclose(Handle),
 	walltime(T3),
 	ParseTime is T2 - T1,
 	BuildTime is T3 - T2,
