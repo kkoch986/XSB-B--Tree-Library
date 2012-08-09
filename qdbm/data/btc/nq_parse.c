@@ -46,6 +46,7 @@ struct raptor_node
 
 static struct raptor_node *head = NULL;
 static struct raptor_node *tail = NULL;
+static char *prefix = "quad";
 
 static struct raptor_node_item build_term(raptor_term *triple)
 {
@@ -247,6 +248,14 @@ DllExport int call_conv load_nquad_file(CTXTdecl)
 	return 1;
 }
 
+DllExport int call_conv set_nq_prefix(CTXTdecl)	
+{
+	prolog_term arg = reg_term(CTXTdecl 1);
+	prefix = p2c_string(CTXTdecl arg);
+
+	return 1;
+}
+
 DllExport int call_conv get_next_result(CTXTdecl)	
 {
 	if(head == NULL) return 0;
@@ -254,7 +263,7 @@ DllExport int call_conv get_next_result(CTXTdecl)
 	// process the head raptor-term and build a term
 	prolog_term return_term = reg_term(CTXTdecl 1);
 	prolog_term t = p2p_new();
-	c2p_functor(CTXTdecl "quad", 4, t);
+	c2p_functor(CTXTdecl prefix, 4, t);
 	c2p_raptor_term(CTXTdecl head->subject, p2p_arg(CTXTdecl t, 1));
 	c2p_raptor_term(CTXTdecl head->predicate, p2p_arg(CTXTdecl t, 2));
 	c2p_raptor_term(CTXTdecl head->object, p2p_arg(CTXTdecl t, 3));

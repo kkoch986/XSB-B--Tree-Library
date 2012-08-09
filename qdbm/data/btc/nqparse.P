@@ -1,6 +1,6 @@
 
 
-:- import load_nquad_file/1, get_next_result/1 from nq_parse.
+:- import load_nquad_file/1, get_next_result/1, set_nq_prefix/1 from nq_parse.
 
 nqff(File, R) :- 
 	load_nquad_file(File),
@@ -14,3 +14,4 @@ nqffn(R) :-
 
 nqload(File) :- load_nquad_file(File).
 nqnext(R) :- get_next_result(R1), ( R1 = R ; nqnext(R)).
+nqprefix(P) :- set_nq_prefix(P).
