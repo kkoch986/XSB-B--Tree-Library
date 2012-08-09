@@ -283,7 +283,7 @@ DllExport int call_conv get_next_result(CTXTdecl)
 	return 1;
 }
 
-private void free_node(struct raptor_node_item i)
+void free_node(struct raptor_node_item i)
 {
 	if(i.arg1 != NULL)
 		free(i.arg1);
