@@ -274,24 +274,24 @@ DllExport int call_conv get_next_result(CTXTdecl)
 		head = head->prev;
 
 	// free up the strings
-	free_node(old_head->subject);
-	free_node(old_head->predicate);
-	free_node(old_head->object);
-	free_node(old_head->graph);
+	// free_node(old_head->subject);
+	// free_node(old_head->predicate);
+	// free_node(old_head->object);
+	// free_node(old_head->graph);
 
 	// return
 	return 1;
 }
 
-void free_node(struct raptor_node_item i)
-{
-	if(i.arg1 != NULL)
-		free(i.arg1);
-	if(i.arg2 != NULL)
-		free(i.arg2);
-	if(i.arg3 != NULL)
-		free(i.arg3);
-}
+// void free_node(struct raptor_node_item i)
+// {
+// 	if(i.arg1 != NULL)
+// 		free(i.arg1);
+// 	if(i.arg2 != NULL)
+// 		free(i.arg2);
+// 	if(i.arg3 != NULL)
+// 		free(i.arg3);
+// }
 
 
 
