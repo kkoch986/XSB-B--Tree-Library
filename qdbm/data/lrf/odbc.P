@@ -80,16 +80,16 @@ test_btree :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Testing for load_dny speeds 	%%%
 
-generateP(X) :-
-	tell('ld.P'),
-	generateP_i(X),
-	told,
-	writeln('start timing...'),
-	walltime(T1),
-	load_dyn('ld.P'),
-	walltime(T2),
-	Time is T2 - T1,
-	write('Load_Dyn-ed file with '), write(X), write(' elements in '), write(Time), writeln(' seconds').
+%generateP(X) :-
+%	tell('ld.P'),
+%	generateP_i(X),
+%	told,
+%	writeln('start timing...'),
+%	walltime(T1),
+%	load_dyn('ld.P'),
+%	walltime(T2),
+%	Time is T2 - T1,
+%	write('Load_Dyn-ed file with '), write(X), write(' elements in '), write(Time), writeln(' seconds').
 
 generateP_i(0) :- !.
 generateP_i(X) :-
@@ -104,7 +104,23 @@ testP :-
 	Time is T2 - T1,
 	write('Queried for p/2 in '), write(Time), writeln(' seconds').
 
-
+generateP(X) :-
+	tell('ld.P'),
+	generateP_i(X),
+	told,
+	writeln('start timing...'),
+	walltime(T1),
+	load_dyn('ld.P'),
+	walltime(T2),
+	Time is T2 - T1,
+	walltime(T4),
+	see('ld.P'),
+	(read(X),fail;true),
+	seen,
+	walltime(T5),
+	ReadTime is T5-T4,
+	RealAssertTime is Time - ReadTime,
+	write('Load_Dyn-ed file with '), write(X), write(' elements in '), write(RealAssertTime), writeln(' seconds').
 
 
 
