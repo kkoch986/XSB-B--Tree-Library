@@ -17,6 +17,9 @@
 :- import bt_mcm_next/1, bt_mcm_prev/1 from bt.
 :- import bt_mcm_jump/2, bt_mcm_jump_rev/2 from bt.
 :- import bt_mcm_key/2, bt_mcm_val/2 from bt.
+:- import bt_mcm_next_key/2 from bt.
+:- import bt_tree_name/2 from bt.
+:- import bt_trans_start/1, bt_trans_commit/1, bt_trans_abort/1 from bt.
 
 :- import numbervars/3, unnumbervars/3 from num_vars.
 
@@ -177,8 +180,8 @@ btgetall_key(TreeHandle, Value) :-
 btgetallnext_key(TreeHandle, Value) :- 
 	btmkey(TreeHandle, Value0),
 	( 
-		unnumbervars(Value0, 0, Value) ; 
-			btmnext(TreeHandle),
+		unnumbervars(Value0, 0, Value)  ; 
+			bt_mcm_next_key(TreeHandle),
 			btgetallnext_key(TreeHandle, Value)
 	).
 
@@ -193,10 +196,25 @@ btgetall_key_rev(TreeHandle, Value) :-
 btgetallnext_key_rev(TreeHandle, Value) :- 
 	btmkey(TreeHandle, Value0),
 	( 
-		unnumbervars(Value0, 0, Value) ; 
+		unnumbervars(Value0, 0, Value)  ; 
 			btmprev(TreeHandle),
 			btgetallnext_key_rev(TreeHandle, Value)
 	).
+
+
+%% btname/2. Returns the name of the tree identified by the handle.
+%% This name also identifies the directory in which the tree files
+%% are held.
+btname(Handle, Name) :- bt_tree_name(Handle, Name).
+
+%% btstrans/1. Initiates a transaction on the given database.
+btstrans(Handle) :- bt_trans_start(Handle).
+
+%% btctrans/1. Commits a transaction on the given database.
+btctrans(Handle) :- bt_trans_commit(Handle).
+
+%% btatrans/1. Aborts a transaction on the given database.
+btatrans(Handle) :- bt_trans_abort(Handle).
 
 
 

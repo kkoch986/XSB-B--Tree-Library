@@ -943,6 +943,22 @@ int mcm_cur_ops(CTXTdecl int operation)
 
 			read_canonical_term(CTXTdecl NULL, &strfile, 1);
 			return TRUE;
+		case 8: // mcm_next_key
+			value = vlcurkey(villas[tree_index].villa, NULL);
+			char *local = "";
+			do
+			{
+				if(!vlcurnext(villas[tree_index].villa))
+				{
+					debugprintf("MCM FIRST Error: vlcurnext Error.\n");
+					return FALSE;	
+				}
+				
+				local = vlcurkey(villas[tree_index].villa, NULL);
+
+			} while( strcmp(local, value) == 0 );
+
+			return TRUE;
 
 		default:
 			fprintf(stderr, "MCM ERROR: Unknown Operation (%i)\n", operation);
@@ -967,6 +983,20 @@ DllExport int call_conv bt_mcm_jump_rev(CTXTdecl) { return mcm_cur_ops(CTXTdecl 
 DllExport int call_conv bt_mcm_key(CTXTdecl) { return mcm_cur_ops(CTXTdecl 6);	 }
 /** bt_mcm_val/2. returns the key and the current point. **/
 DllExport int call_conv bt_mcm_val(CTXTdecl) { return mcm_cur_ops(CTXTdecl 7);	 }
+/** bt_mcm_next_key/1. Jump the cursor to the next record with a unique key in the tree. **/
+DllExport int call_conv bt_mcm_next_key(CTXTdecl) { return mcm_cur_ops(CTXTdecl 8);	 }
+
+/*
+ The function `vlcurput' is used in order to insert a record around the cursor.
+
+int vlcurput(VILLA *villa, const char *vbuf, int vsiz, int cpmode);
+`villa' specifies a database handle connected as a writer. `vbuf' specifies the pointer to the region of a value. `vsiz' specifies the size of the region of the value. If it is negative, the size is assigned with `strlen(vbuf)'. `cpmode' specifies detail adjustment: `VL_CPCURRENT', which means that the value of the current record is overwritten, `VL_CPBEFORE', which means that a new record is inserted before the current record, `VL_CPAFTER', which means that a new record is inserted after the current record. If successful, the return value is true, else, it is false. False is returned when no record corresponds to the cursor. After insertion, the cursor is moved to the inserted record.
+The function `vlcurout' is used in order to delete the record where the cursor is.
+
+int vlcurout(VILLA *villa);
+`villa' specifies a database handle connected as a writer. If successful, the return value is true, else, it is false. False is returned when no record corresponds to the cursor. After deletion, the cursor is moved to the next record if possible.
+*/
+
 
 
 /** bt_size/2 returns the current size of the tree **/
@@ -995,6 +1025,111 @@ DllExport int call_conv bt_size(CTXTdecl)
 }
 
 
+/** bt_tree_name/2 Returns the name of the B+ Tree which also identirfies the name of the **/
+/** Directory which holds the tree.	**/
+DllExport int call_conv bt_tree_name(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
 
+	int handle_index = p2c_int(handle_term);
 
+	if(handle_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
 
+	extern_ctop_string(CTXTdecl 2, vlname(villas[handle_index].villa));
+	
+	return TRUE;
+}
+
+/**********************************************/
+/**** TRANSACTIONS ****************************/
+/**********************************************/
+DllExport int call_conv bt_trans_start(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+
+	if(handle_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(!vltranbegin(villas[handle_index].villa))
+	{
+		fprintf(stderr, "TRANSACTION Error: vltranbegin Error.\n");
+		return FALSE;	
+	}
+
+	return TRUE;
+}
+
+DllExport int call_conv bt_trans_commit(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+
+	if(handle_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(!vltrancommit(villas[handle_index].villa))
+	{
+		fprintf(stderr, "TRANSACTION Error: vltrancommit Error.\n");
+		return FALSE;	
+	}
+
+	return TRUE;
+}
+
+DllExport int call_conv bt_trans_abort(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+
+	if(handle_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(!vltranabort(villas[handle_index].villa))
+	{
+		fprintf(stderr, "TRANSACTION Error: vltranabort Error.\n");
+		return FALSE;	
+	}
+
+	return TRUE;
+}

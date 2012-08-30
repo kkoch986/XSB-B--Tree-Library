@@ -16,3 +16,10 @@
 :- export bt_mcm_next/1, bt_mcm_prev/1.
 :- export bt_mcm_jump/2, bt_mcm_jump_rev/2.
 :- export bt_mcm_key/2, bt_mcm_val/2.
+:- export bt_mcm_next_key/1.
+
+% get info about a tree
+:- export bt_tree_name/2.
+
+% transactions
+:- export bt_trans_start/1, bt_trans_commit/1, bt_trans_abort/1.
