@@ -185,7 +185,7 @@ static void c2p_raptor_term(CTXTdecl struct raptor_node_item triple, prolog_term
 			break ;
 	}
 
-	return t;
+	//return t;
 }
 
 static void handle_term(CTXTdecl void* user_data, raptor_statement* quad)
@@ -291,17 +291,5 @@ DllExport int call_conv get_next_result(CTXTdecl)
 	// return
 	return 1;
 }
-
-// void free_node(struct raptor_node_item i)
-// {
-// 	if(i.arg1 != NULL)
-// 		free(i.arg1);
-// 	if(i.arg2 != NULL)
-// 		free(i.arg2);
-// 	if(i.arg3 != NULL)
-// 		free(i.arg3);
-// }
-
-
 
 

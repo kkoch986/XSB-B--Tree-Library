@@ -54,3 +54,42 @@ appendbt(File) :-
 	write('Added '), write(Added), writeln(' entries.'),
 	write('Parsing Time: '), write(ParseTime), writeln(' seconds.'),
 	write('Building Time: '), write(BuildTime), writeln(' seconds.').
+
+
+
+
+
+small_test_load() :-
+	
+	walltime(T1),
+	nqprefix(quad),
+	nqload('data-0.nq'),
+	walltime(T2),
+	ParseTime is T2 - T1,
+	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
+	walltime(T3),
+	btinit(quad/4, 1, Handle),		%% index on the "subject"
+	tell('log.txt'),
+	btsize(Handle, InitialSize),
+	(
+		nqnextclean(R),
+		write_canonical(R), nl, nl,
+		btinsert(Handle, R),
+		fail ; true
+	),
+	told,
+	btsize(Handle, Size),
+	btclose(Handle),
+	walltime(T4),
+	BuildTime is T4 - T3,
+	Added is Size - InitialSize,
+	write('Added '), write(Added), writeln(' entries.'),
+	write('Parsing Time: '), write(ParseTime), writeln(' seconds.'),
+	write('Building Time: '), write(BuildTime), writeln(' seconds.').
+
+
+
+:- import platform/1 from shell.
+
+clean :- shell('rm -f *.dylib *.xwam *.o *.so').
+scrub :- shell('rm -rf db_*').

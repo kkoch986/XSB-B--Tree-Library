@@ -13,5 +13,26 @@ nqffn(R) :-
 	).
 
 nqload(File) :- load_nquad_file(File).
+
+nqnextclean(R) :- 
+	get_next_result(R1),
+	(
+		R1 = quad(S, P, O, C),
+		nqpred_url_to_atom(P, PC),
+		R = quad(S, PC, O, C) 
+		; nqnextclean(R)
+	).
+
 nqnext(R) :- get_next_result(R1), ( R1 = R ; nqnext(R)).
 nqprefix(P) :- set_nq_prefix(P).
+
+nqclear() :- (nqnext(_), nqclear(), fail ; true).
+
+
+%% Conversions to neat strings for w3 http tags
+nqpred_url_to_atom(url('http://www.w3.org/2006/http#date'), date) 						:- !.
+nqpred_url_to_atom(url('http://www.w3.org/2006/http#server'), server) 					:- !.
+nqpred_url_to_atom(url('http://www.w3.org/2006/http#content-length'), content_length) 	:- !.
+nqpred_url_to_atom(url('http://www.w3.org/2006/http#connection'), connection) 			:- !.
+nqpred_url_to_atom(url('http://www.w3.org/2006/http#content-type'), content_type) 		:- !.
+nqpred_url_to_atom(url(X), url(X)).

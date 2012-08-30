@@ -18,6 +18,8 @@
 :- import bt_mcm_jump/2, bt_mcm_jump_rev/2 from bt.
 :- import bt_mcm_key/2, bt_mcm_val/2 from bt.
 
+:- import numbervars/3, unnumbervars/3 from num_vars.
+
 %% This function will initialize a btree
 btinit(Pred/Arity, Argument, Handle) :- bt_init(Pred/Arity, Argument, Handle).
 
@@ -31,13 +33,15 @@ btsize(Handle, Size) :- bt_size(Handle, Size).
 btdrop(Pred/Arity, Argument) :- bt_drop(Pred/Arity, Argument).
 
 %% Insert a Term into a B+ Tree
-btinsert(Handle, Term) :- bt_insert(Handle, Term).
+btinsert(Handle, Term) :- 
+	numbervars(Term, 0, _),
+	bt_insert(Handle, Term).
 
 %% Non-Deterministically find terms that match the key exactly.
 btget(TreeHandle, Key, Value) :- 
 	bt_getl(TreeHandle, Key),
 	btgetnext(TreeHandle, Value0), 
-	Value = Value0.
+	unnumbervars(Value0, 0, Value).
 
 btgetnext(TreeHandle, Value) :- 
 	bt_getnext(TreeHandle, Value0),
@@ -55,13 +59,14 @@ btgetnext(TreeHandle, Value) :-
 %% btprefix(+TreeHandle, +KeyPrefix, -Value).
 btprefix(TreeHandle, Prefix, Value) :- 
 	bt_prefix_jump(TreeHandle, Prefix),
-	btprefixnext(TreeHandle, Value).
+	btprefixnext(TreeHandle, Value0),
+	unnumbervars(Value0, Value).
 
 %% helper for Non-Determinism to btprefix.
 btprefixnext(TreeHandle, Value) :-
 	bt_prefix_next(TreeHandle, Value0),
 	( 
-			Value = Value0
+			unnumbervars(Value0, Value)
 			; btprefixnext(TreeHandle, Value)
 	).
 
@@ -80,7 +85,7 @@ btrange(TreeHandle, LowerBound, UpperBound, Value) :-
 btrangenext(TreeHandle, Value) :-
 	bt_range_next(TreeHandle, Value0),
 	(
-		Value = Value0 
+		unnumbervars(Value0, Value) 
 		; btrangenext(TreeHandle, Value)
 	).
 
@@ -118,13 +123,13 @@ btmjump_rev(TreeHandle, Key) :- bt_mcm_jump_rev(TreeHandle, Key).
 
 %% btmkey/2. Returns the current Key which the cursor is pointing to.
 %% Does not affect the cursor position.
-btmkey(TreeHandle, Key) :- bt_mcm_key(TreeHandle, Key).
+btmkey(TreeHandle, Key) :- bt_mcm_key(TreeHandle, Key0), unnumbervars(Key0, Key).
 
 %% btmval/2. Returns the current Value which the cursor is pointing to.
 %% Does not affect the cursor position.
 %% Notice the use of Val0, from the latest version, calls to the c level
 %% functions can be made only with variables when values are returned.
-btmval(TreeHandle, Val) :- bt_mcm_val(TreeHandle, Val0), Val = Val0.
+btmval(TreeHandle, Val) :- bt_mcm_val(TreeHandle, Val0), unnumbervars(Val0, Val).
 
 
 %% btgetall/2. Returns each value in the tree on at a time starting
@@ -138,7 +143,7 @@ btgetall(TreeHandle, Value) :-
 btgetallnext(TreeHandle, Value) :- 
 	btmval(TreeHandle, Value0),
 	( 
-		Value = Value0 ; 
+		unnumbervars(Value0, Value) ; 
 			btmnext(TreeHandle),
 			btgetallnext(TreeHandle, Value)
 	).
@@ -155,7 +160,7 @@ btgetall_rev(TreeHandle, Value) :-
 btgetallprev(TreeHandle, Value) :- 
 	btmval(TreeHandle, Value0),
 	( 
-		Value = Value0 ; 
+		unnumbervars(Value0, Value) ; 
 		btmprev(TreeHandle),
 		btgetallprev(TreeHandle, Value)
 	).
@@ -172,7 +177,7 @@ btgetall_key(TreeHandle, Value) :-
 btgetallnext_key(TreeHandle, Value) :- 
 	btmkey(TreeHandle, Value0),
 	( 
-		Value = Value0 ; 
+		unnumbervars(Value0, Value) ; 
 			btmnext(TreeHandle),
 			btgetallnext_key(TreeHandle, Value)
 	).
@@ -188,7 +193,7 @@ btgetall_key_rev(TreeHandle, Value) :-
 btgetallnext_key_rev(TreeHandle, Value) :- 
 	btmkey(TreeHandle, Value0),
 	( 
-		Value = Value0 ; 
+		unnumbervars(Value0, Value) ; 
 			btmprev(TreeHandle),
 			btgetallnext_key_rev(TreeHandle, Value)
 	).
