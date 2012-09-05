@@ -1,0 +1,9 @@
+
+:- [socket].
+
+
+open_socket(Port, ServerSocket, ConnectionSocket) :- 
+	socket(ServerSocket, _SocketError),
+	socket_bind(ServerSocket, Port, _BindError),
+	socket_listen(ServerSocket, 1000, _ConnectError),
+	socket_accept(ServerSocket, ConnectionSocket, _SocketError).
