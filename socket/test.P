@@ -1,5 +1,6 @@
 
 :- [socket].
+?- [socket].
 
 
 open_socket(Port, ServerSocket, ConnectionSocket) :- 
@@ -7,3 +8,17 @@ open_socket(Port, ServerSocket, ConnectionSocket) :-
 	socket_bind(ServerSocket, Port, _BindError),
 	socket_listen(ServerSocket, 1000, _ConnectError),
 	socket_accept(ServerSocket, ConnectionSocket, _SocketError).
+
+server_start(Port) :-
+	socket(ServerSocket, _SocketError),
+	socket_bind(ServerSocket, Port, _BindError),
+	socket_listen(ServerSocket, 1000, _ConnectError),
+	socket_accept(ServerSocket, ConnectionSocket, _SocketError),
+	waitingState(ConnectionSocket).
+
+
+waitingState(Client) :-
+	writeln('Server Entering Waiting State.'),
+	socket_recv(Client, Message, _RecvError),
+	% Look at the first character of the socket message, that is the opcode
+	
