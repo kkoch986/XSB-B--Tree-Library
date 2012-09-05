@@ -5,19 +5,19 @@
 # It is necessary for linking the library.
 
 # The name that we can dlopen(3).
-dlname='libraptor2.0.dylib'
+dlname='libraptor2.so.0'
 
 # Names of this library.
-library_names='libraptor2.0.dylib libraptor2.dylib'
+library_names='libraptor2.so.0.0.0 libraptor2.so.0 libraptor2.so'
 
 # The name of the static archive.
 old_library='libraptor2.a'
 
 # Linker flags that can not go in dependency_libs.
-inherited_linker_flags=' '
+inherited_linker_flags=''
 
 # Libraries that this one depends upon.
-dependency_libs=' -lcurl -L/opt/local/lib -lxslt /opt/local/lib/libxml2.la /opt/local/lib/libiconv.la -lz -lpthread -licucore -lm'
+dependency_libs=' -L/usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/libxslt.la /usr/lib/x86_64-linux-gnu/libxml2.la'
 
 # Names of additional weak libraries provided by this library
 weak_library_names=''

@@ -11,7 +11,7 @@
 #define HAVE_C99_VSNPRINTF 1
 
 /* Have curl/curl.h */
-#define HAVE_CURL_CURL_H 1
+/* #undef HAVE_CURL_CURL_H */
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
@@ -74,7 +74,7 @@
 #define HAVE_MEMORY_H 1
 
 /* Raptor raptor_parse_date available */
-/* #undef HAVE_RAPTOR_PARSE_DATE */
+#define HAVE_RAPTOR_PARSE_DATE 1
 
 /* Define to 1 if you have the `setjmp' function. */
 #define HAVE_SETJMP 1
@@ -276,13 +276,13 @@
 #define RAPTOR_VERSION_RELEASE 8
 
 /* Have libcurl WWW library */
-#define RAPTOR_WWW_LIBCURL 1
+/* #undef RAPTOR_WWW_LIBCURL */
 
 /* Have libfetch WWW library */
 /* #undef RAPTOR_WWW_LIBFETCH */
 
 /* Have libxml available as a WWW library */
-/* #undef RAPTOR_WWW_LIBXML */
+#define RAPTOR_WWW_LIBXML 1
 
 /* No WWW library */
 /* #undef RAPTOR_WWW_NONE */
@@ -316,7 +316,7 @@
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */
-#define YYTEXT_POINTER 1
+/* #undef YYTEXT_POINTER */
 
 /* Enable large inode numbers on Mac OS X 10.5.  */
 #ifndef _DARWIN_USE_64_BIT_INODE

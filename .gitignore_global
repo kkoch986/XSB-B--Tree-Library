@@ -1,7 +1,7 @@
 # qdbm and xsb #
 qdbm/qdbm*
 qdbm/XSB/*
-
+qdbm/data/btc/raptor2/*
 
 # Compiled source #
 ###################

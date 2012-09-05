@@ -7,6 +7,6 @@ Name: Raptor RDF Parsing Library
 Description: RDF Parser Toolkit Library
 Version: 2.0.8
 Libs: -L${libdir} -lraptor2
-Libs.private:  -lcurl -L/opt/local/lib -lxml2 -lz -lpthread -liconv -lm -lxslt -lxml2 -lz -lpthread -licucore -lm
+Libs.private:  -L/usr/lib/x86_64-linux-gnu -lxml2 -L/usr/lib/x86_64-linux-gnu -lxslt -lxml2
 Cflags: -I${includedir}
 

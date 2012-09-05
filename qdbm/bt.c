@@ -378,7 +378,7 @@ DllExport int call_conv bt_get(CTXTdecl)
 	char *value = vlget(tree.villa, key_str, -1, &valsize);
 	STRFILE strfile;
 	strfile.strcnt = valsize;
-	strfile.strptr = value;
+	strfile.strptr = value; strfile.strbase = value;
 
 	debugprintf("Found Value: %s\n", value);
 
@@ -530,7 +530,7 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 	// unify the string and return
 	STRFILE strfile;
 	strfile.strcnt = strlen(value);
-	strfile.strptr = value;
+	strfile.strptr = value; strfile.strbase = value;
 
 	read_canonical_term(CTXTdecl NULL, &strfile, 1);
 
@@ -651,7 +651,7 @@ DllExport int call_conv bt_prefix_next(CTXTdecl)
     STRFILE strfile;
     char *value = vlcurval(tree.villa, NULL);
 	strfile.strcnt = strlen(value);
-	strfile.strptr = value;
+	strfile.strptr = value; strfile.strbase = value;
 
 	vlcurnext(tree.villa);
 
@@ -778,7 +778,7 @@ DllExport int call_conv bt_range_next(CTXTdecl)
     STRFILE strfile;
     char *value = vlcurval(tree.villa, NULL);
 	strfile.strcnt = strlen(value);
-	strfile.strptr = value;
+	strfile.strptr = value; strfile.strbase = value;
 
 	vlcurnext(tree.villa);
 
@@ -931,7 +931,7 @@ int mcm_cur_ops(CTXTdecl int operation)
 		case 6:		// mcm_key
 		    value = vlcurkey(villas[tree_index].villa, NULL);
 			strfile.strcnt = strlen(value);
-			strfile.strptr = value;
+			strfile.strptr = value; strfile.strbase = value;
 
 			read_canonical_term(CTXTdecl NULL, &strfile, 1);
 			return TRUE;
@@ -939,8 +939,9 @@ int mcm_cur_ops(CTXTdecl int operation)
 		case 7:		// mcm_val
 		    value = vlcurval(villas[tree_index].villa, NULL);
 			strfile.strcnt = strlen(value);
-			strfile.strptr = value;
+			strfile.strptr = value; strfile.strbase = value;
 
+			printf("BT -> RCT: %s\n", strfile.strptr);
 			read_canonical_term(CTXTdecl NULL, &strfile, 1);
 			return TRUE;
 		case 8: // mcm_next_key
