@@ -1,5 +1,6 @@
 :- import socket/2, socket_bind/3, socket_listen/3, socket_accept/3, socket_getL/3, socket_getS/3, socket_get0/3 from socket.
 
+<<<<<<< HEAD
 server() :- server(99, _, _).
 server(Port, ServerSocket, ConnectionSocket) :- 
 	socket(ServerSocket, _SocketError),
@@ -46,3 +47,28 @@ check_opcode(Expected, Actual) :-
 
 opcode(1, 'OP_HS_INIT') 	:- !.
 opcode(_, 'UNKNOWN') 		:- !.
+=======
+:- [socket].
+?- [socket].
+
+
+open_socket(Port, ServerSocket, ConnectionSocket) :- 
+	socket(ServerSocket, _SocketError),
+	socket_bind(ServerSocket, Port, _BindError),
+	socket_listen(ServerSocket, 1000, _ConnectError),
+	socket_accept(ServerSocket, ConnectionSocket, _SocketError).
+
+server_start(Port) :-
+	socket(ServerSocket, _SocketError),
+	socket_bind(ServerSocket, Port, _BindError),
+	socket_listen(ServerSocket, 1000, _ConnectError),
+	socket_accept(ServerSocket, ConnectionSocket, _SocketError),
+	waitingState(ConnectionSocket).
+
+
+waitingState(Client) :-
+	writeln('Server Entering Waiting State.'),
+	socket_recv(Client, Message, _RecvError),
+	% Look at the first character of the socket message, that is the opcode
+	
+>>>>>>> f6c7c2a6c0d1badb247d0dc148b3b58db2d5d42f
