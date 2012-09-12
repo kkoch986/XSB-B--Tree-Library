@@ -1,9 +1,48 @@
+:- import socket/2, socket_bind/3, socket_listen/3, socket_accept/3, socket_getL/3, socket_getS/3, socket_get0/3 from socket.
 
-:- [socket].
-
-
-open_socket(Port, ServerSocket, ConnectionSocket) :- 
+server() :- server(99, _, _).
+server(Port, ServerSocket, ConnectionSocket) :- 
 	socket(ServerSocket, _SocketError),
 	socket_bind(ServerSocket, Port, _BindError),
 	socket_listen(ServerSocket, 1000, _ConnectError),
-	socket_accept(ServerSocket, ConnectionSocket, _SocketError).
+	socket_accept(ServerSocket, ConnectionSocket, _SocketError),
+	recv_handshakeInit(ConnectionSocket).
+
+
+recv_handshakeInit(Socket) :-	
+	opcode(ExOpcode, 'OP_HS_INIT'),
+	socket_getS(Socket, Opcode, Error),
+	check_opcode(ExOpcode, Opcode)
+	->
+		socket_getL(Socket, MessageLength, Error),
+		socket_get0N(Socket, MessageLength, MachineName),
+		write('Machine Name: '), writeln(MachineName)
+	.
+
+
+%% loads a String of lenth N from the Socket provided
+socket_get0N(Socket, N, Buffer) :-
+	socket_get0N_inner(Socket, N, Buf),
+	atom_codes(Buffer, Buf).
+
+socket_get0N_inner( _ , 0, []).
+socket_get0N_inner(Socket, N, [Char | Buffer]) :-
+	socket_get0(Socket, Char, _Error),
+	NL is N - 1,
+	socket_get0N_inner(Socket, NL, Buffer).
+
+%% Checks if the opcode provided matches the expected op code.
+%% if it does not, a message is printed and the call fails.
+check_opcode(Expected, Actual) :-
+	Expected = Actual 
+	->
+		true 
+	;
+		opcode(Expected, SExpected),
+		opcode(Actual, SActual),
+		write('Invalid Opcode Recieved, expecting '), write(SExpected), write(', got '), write(SActual), writeln('.'),
+		fail
+	.
+
+opcode(1, 'OP_HS_INIT') 	:- !.
+opcode(_, 'UNKNOWN') 		:- !.

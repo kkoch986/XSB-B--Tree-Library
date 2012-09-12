@@ -1,0 +1,129 @@
+
+Changes to XSB:
+===========================================================================
+===========================================================================
+===========================================================================
+Added the following function to socket_xsb.c:
+---------------------------------------------------------------------------
+
+static int socket_getL(CTXTdeclc int *rc, unsigned int *val, int timeout) {
+  uint32_t lval = 0;
+  SOCKET sock_handle;
+  sock_handle = (SOCKET) ptoc_int(CTXTc 2);
+  if (read_select(sock_handle, timeout)) {
+    *rc = recvfrom(sock_handle, (void *)&lval, 4, 0, NULL, 0);
+
+    // just set the error code to 1 (success) if there werent any errors
+    // XSB seems to mistake the return value of 4 as an error
+    // even though it just signifies that 4 bytes were read.
+    if(*rc >= 0) *rc = 1;
+
+    *val = ntohl( (unsigned int) lval );
+
+    return NORMAL_TERMINATION;
+  } else {
+    return TIMED_OUT;
+  }
+}
+
+static int socket_getS(CTXTdeclc int *rc, unsigned int *val, int timeout) {
+  uint16_t lval = 0;
+  SOCKET sock_handle;
+  sock_handle = (SOCKET) ptoc_int(CTXTc 2);
+  if (read_select(sock_handle, timeout)) {
+    *rc = recvfrom(sock_handle, (void *)&lval, 2, 0, NULL, 0);
+
+    // just set the error code to 1 (success) if there werent any errors
+    // XSB seems to mistake the return value of 4 as an error
+    // even though it just signifies that 4 bytes were read.
+    if(*rc >= 0) *rc = 1;
+
+    *val = ntohs( (unsigned int) lval );
+
+    return NORMAL_TERMINATION;
+  } else {
+    return TIMED_OUT;
+  }
+}
+===========================================================================
+
+===========================================================================
+Added the following to socket_xsb.c (around line 681):
+---------------------------------------------------------------------------
+
+case SOCKET_GETL:
+     /* socket_request(SOCKET_GET0,+Sockfd,-C,-Error,_,_,_) */
+    timeout_flag = socket_getL(CTXTc &rc, &int_read, (int)pflags[SYS_TIMER]);
+
+    if (timeout_flag == TIMED_OUT) {
+      return set_error_code(CTXTc TIMEOUT_ERR, 4, "SOCKET_SEND");
+    } else {
+      /*error handling */ 
+      switch (rc) {
+      case 1:
+        ctop_int(CTXTc 3,int_read);
+        ecode = SOCK_OK;
+        break;
+      case 0:
+        ecode = SOCK_EOF;
+        break;
+      default:
+        ctop_int(CTXTc 3,-1);
+        perror("SOCKET_GETL");
+        ecode = XSB_SOCKET_ERRORCODE;
+      }
+         
+      return set_error_code(CTXTc ecode,  4,  "SOCKET_GET0");
+    }  
+
+case SOCKET_GETS:
+     /* socket_request(SOCKET_GET0,+Sockfd,-C,-Error,_,_,_) */
+    timeout_flag = socket_getS(CTXTc &rc, &int_read, (int)pflags[SYS_TIMER]);
+
+    if (timeout_flag == TIMED_OUT) {
+      return set_error_code(CTXTc TIMEOUT_ERR, 4, "SOCKET_SEND");
+    } else {
+      /*error handling */ 
+      switch (rc) {
+      case 1:
+        ctop_int(CTXTc 3,int_read);
+        ecode = SOCK_OK;
+        break;
+      case 0:
+        ecode = SOCK_EOF;
+        break;
+      default:
+        ctop_int(CTXTc 3,-1);
+        perror("SOCKET_GETS");
+        ecode = XSB_SOCKET_ERRORCODE;
+      }
+         
+      return set_error_code(CTXTc ecode,  4,  "SOCKET_GET0");
+    }  
+===========================================================================
+
+===========================================================================
+added the following to socket.P (XSB/lib/socket.P):
+---------------------------------------------------------------------------
+
+socket_getL(Sockfd,Char,Error) :-
+  socket_request(SOCKET_GETL,Sockfd,Char,Error,_,_,_).
+
+socket_getS(Sockfd,Char,Error) :-
+  socket_request(SOCKET_GETS,Sockfd,Char,Error,_,_,_).
+===========================================================================
+
+===========================================================================
+Added the following to socket.H (XSB/lib/socket.H):
+---------------------------------------------------------------------------
+
+:- export socket_getL/3, socket_getS/3.
+===========================================================================
+
+===========================================================================
+Added the following to sockets_defs_xsb.h:
+---------------------------------------------------------------------------
+
+#define SOCKET_GETL         17
+#define SOCKET_GETS         18
+===========================================================================
