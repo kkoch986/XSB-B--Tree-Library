@@ -58,22 +58,21 @@ appendbt(File) :-
 
 
 
-
-small_test_load() :-
-	
+small_test_load() :- small_test_load('data-0.nq').
+small_test_load(FN) :-
 	walltime(T1),
 	nqprefix(quad),
-	nqload('data-0.nq'),
+	nqload(FN),
 	walltime(T2),
 	ParseTime is T2 - T1,
 	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
 	walltime(T3),
 	btinit(quad/4, 1, Handle),		%% index on the "subject"
-	tell('log.txt'),
+	tell('log.P'),
 	btsize(Handle, InitialSize),
 	(
 		nqnextclean(R),
-		write_canonical(R), nl, nl,
+		write_canonical(R), nl,
 		btinsert(Handle, R),
 		fail ; true
 	),
@@ -87,7 +86,7 @@ small_test_load() :-
 	write('Parsing Time: '), write(ParseTime), writeln(' seconds.'),
 	write('Building Time: '), write(BuildTime), writeln(' seconds.').
 
-
+getall() :- btinit(quad/4,1,X), btgetall(X, _Y),  writeln(_Y), fail.
 
 :- import platform/1 from shell.
 

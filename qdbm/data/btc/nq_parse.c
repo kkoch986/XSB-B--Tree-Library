@@ -67,8 +67,8 @@ static struct raptor_node_item build_term(raptor_term *triple)
 	  		else 
 	  		{
 	  			int size = strlen(raptor_uri_as_string(triple->value.uri));
-	  			n.arg1 = malloc(sizeof(char) * size);
-    			strncpy(n.arg1, raptor_uri_as_string(triple->value.uri), size);
+	  			n.arg1 = malloc(sizeof(char) * (size + 1));
+    			strncpy(n.arg1, raptor_uri_as_string(triple->value.uri), size + 1);
 	  		}
 
 	  		break ;
@@ -82,8 +82,8 @@ static struct raptor_node_item build_term(raptor_term *triple)
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.literal.string);
-	  			n.arg1 = malloc(sizeof(char) * size);
-    			strncpy(n.arg1, triple->value.literal.string, size);
+	  			n.arg1 = malloc(sizeof(char) * (size + 1));
+    			strncpy(n.arg1, triple->value.literal.string, size + 1);
 	  		}
 
 	  		// datatype string
@@ -92,8 +92,8 @@ static struct raptor_node_item build_term(raptor_term *triple)
 	  		else 
 	  		{
 	  			int size = strlen(raptor_uri_as_string(triple->value.literal.datatype));
-	  			n.arg2 = malloc(sizeof(char) * size);
-    			strncpy(n.arg2, raptor_uri_as_string(triple->value.literal.datatype), size);
+	  			n.arg2 = malloc(sizeof(char) * (size + 1));
+    			strncpy(n.arg2, raptor_uri_as_string(triple->value.literal.datatype), size + 1);
 	  		}
 
 	  		// language string
@@ -102,8 +102,8 @@ static struct raptor_node_item build_term(raptor_term *triple)
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.literal.language);
-	  			n.arg3 = malloc(sizeof(char) * size);
-    			strncpy(n.arg1, triple->value.literal.language, size);
+	  			n.arg3 = malloc(sizeof(char) * (size + 1));
+    			strncpy(n.arg1, triple->value.literal.language, size + 1);
 	  		}
 
 	  		break ;
@@ -116,8 +116,8 @@ static struct raptor_node_item build_term(raptor_term *triple)
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.blank.string);
-	  			n.arg1 = malloc(sizeof(char) * size);
-    			strncpy(n.arg1, triple->value.blank.string, size);
+	  			n.arg1 = malloc(sizeof(char) * (size + 1));
+    			strncpy(n.arg1, triple->value.blank.string, size + 1);
 	  		}
 
 	  		 break ;

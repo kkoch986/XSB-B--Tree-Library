@@ -939,10 +939,11 @@ int mcm_cur_ops(CTXTdecl int operation)
 		case 7:		// mcm_val
 		    value = vlcurval(villas[tree_index].villa, NULL);
 			strfile.strcnt = strlen(value);
+			
 			strfile.strptr = value; strfile.strbase = value;
-
-			printf("BT -> RCT: %s\n", strfile.strptr);
+			//printf("BT -> RCT: %s (%i)\n", strfile.strptr, strlen(value));
 			read_canonical_term(CTXTdecl NULL, &strfile, 1);
+			//printf("\n");
 			return TRUE;
 		case 8: // mcm_next_key
 			value = vlcurkey(villas[tree_index].villa, NULL);

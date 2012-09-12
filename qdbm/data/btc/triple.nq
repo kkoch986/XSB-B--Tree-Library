@@ -1,5 +1,0 @@
-ex:dog1	rdf:type	ex:animal
-ex:cat1	rdf:type	ex:cat
-zoo:host	rdfs:range	ex:animal
-ex:zoo1	zoo:host	ex:cat2
-ex:cat2	rdfs:subClassOf	ex:animal
