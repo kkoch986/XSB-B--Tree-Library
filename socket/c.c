@@ -9,22 +9,66 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-<<<<<<< HEAD
-const unsigned int OP_HANDSHAKE_INIT = 1;
-char* build_op_hsinit(char *mname, int sockfd);
-=======
-const unsigned int OP_QUERY = 0;
-char* build_op_query(char *query);
->>>>>>> f6c7c2a6c0d1badb247d0dc148b3b58db2d5d42f
+// Main Connection OP Codes
+const unsigned int OP_HANDSHAKE_INIT 	= 1;
+const unsigned int OP_HANDSHAKE_ACK 	= 2;
+const unsigned int OP_DISCONNECT 		= 3;
+
+// Prolog Controlling Op Codes
+const unsigned int OP_CONSULT 			= 4;
+const unsigned int OP_QUERY 			= 5;
+const unsigned int OP_GET_RESULT		= 6;
+
+// Packet and/or header lengths:            
+const int op_hsinit_packet_header_length    = 6;
+const int op_hsack_packet_length            = 2;
+const int op_disconnect_packet_length       = 2;
+const int op_consult_packet_header_length   = 6;
+const int op_query_packet_header_length     = 6;
+const int op_get_result_length              = 2;
+
+
+int send_op_hsinit(char *mname, int sockfd);
+int recv_op_hsack(int sockfd);
+int send_op_disconnect(int sockfd);
+int send_op_consult(char *fname, int sockfd);
+int send_op_query(char *query, int sockfd);
+int send_op_get_result(int sockfd);
+
+// Structure to hold query results
+struct query_result 
+{
+	// a bool to represent whether or not this object
+	// is actually holding a result. Value should be either
+	// 0 or 1, 0 being a failure.
+	char fail;
+};
+
+// Helper function to convert OP codes to strings
+char *optos(unsigned int opcode)
+{
+	switch(opcode)
+	{
+		case 1:
+			return "OP_HANDSHAKE_INIT";
+		case 2:
+			return "OP_HANDSHAKE_ACK";
+		case 4:
+			return "OP_CONSULT";
+		case 5:
+			return "OP_QUERY";
+		case 6:
+			return "OP_GET_RESULT";
+		default:
+			return "UNKNOWN";
+	}
+}
 
 int main()
 {
-	char *msg_body;
-	unsigned int msg_body_len, network_encoded_len;
-	int sockfd, portno, n;
+	int sockfd, portno;
 	struct sockaddr_in serv_addr;
 	struct hostent *server;
-	char buffer[256];
 
 	portno = 99;
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -42,117 +86,174 @@ int main()
 	if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
 		printf("ERROR 2");
 
-<<<<<<< HEAD
-	char *message = build_op_hsinit("kens computer", sockfd);
+	// perform the handshake
+	send_op_hsinit("kens computer", sockfd);
+	recv_op_hsack(sockfd);
 
-	// printf("sending %s", message+4);
-	// n = send(sockfd, message, strlen(message + 4) + 4, 0);
-	// printf("sent %s", message+4);
+	// send consult queries to load the btree library
+	send_op_consult("../qdbm/bt", sockfd);
+	send_op_consult("../qdbm/bt_p", sockfd);
 
-	// if(n < 0)
-	// 	printf("Error writing to socket\n");
+	// now the fun part, send some queries
+	send_op_query("assert(a(b,c)), assert(a(c,d)", sockfd);
+	//sleep(5);
+	send_op_query("a(X,Y), writeln(X)", sockfd);
+	//send_op_query("btinit(quad/4,1,_X), btgetall(_X, Y)", sockfd);
 
-	// bzero(buffer, 256);
-=======
-	msg_body = "a(b,c)";
-	char *message = build_op_query(msg_body);
+	// send packets to get some results
+	send_op_get_result(sockfd);
+	send_op_get_result(sockfd);
 
-	printf("sending %s", message+4);
-	n = send(sockfd, message, strlen(message), 0);
-	printf("sent %s", message+4);
->>>>>>> f6c7c2a6c0d1badb247d0dc148b3b58db2d5d42f
-
-	// n = read(sockfd, buffer, 255);
-
-	// printf("RECV: %s\n", buffer);
-
+	// send a disconnect query and close the connection
+	send_op_disconnect(sockfd);
+	printf("Closing...\n");
 	close(sockfd);
 
 	return 0;
 }
 
-// OP_QUERY Packet:
-// ----------------- [excluded] 4 Bytes Total Message Length (unsigned int) (message[0 - 3])
-// 1 Byte OP_CODE (unsigned int) (message[4 - 7])
+// OP_HS_INIT Packet:
+// 2 Byte OP_CODE (unsigned int)
 // 4 Byte Machine Name Length
 // <Machine Name Length> Bytes Machine Name
-//
-// Returned value is allocated using malloc
-// so it should be freed when done
-const int op_hdinit_packet_length = 6;
-char* build_op_hsinit(char *mname, int sockfd)
+int send_op_hsinit(char *mname, int sockfd)
 {
 	// the query returned will be the op code
 	unsigned int content_length = strlen(mname);
 
-<<<<<<< HEAD
 	// set aside some space for the message
-	char *message = malloc(sizeof(char) * (content_length + 8));
-	bzero(message, (content_length + op_hdinit_packet_length));
+	char *message = malloc(sizeof(char) * (content_length + op_hsinit_packet_header_length));
+	bzero(message, (content_length + op_hsinit_packet_header_length));
 	
 	// now the op code
 	unsigned int opcode = htons(OP_HANDSHAKE_INIT);
 	memcpy((void *) message, (void *) &opcode, 2); 
-	// strncpy(message+4, itoa(OP_QUERY), 2); 
 
 	// now the query length
 	unsigned int cls = htonl(content_length);
 	memcpy((void *) message+2, (void *) &cls, 4); 
-	// strncpy(message+6, itoa(query_length), 2); 
 
 	// now the query string
-	strcpy(message+op_hdinit_packet_length, mname);
+	strcpy(message+op_hsinit_packet_header_length, mname);
 
-	int n = send(sockfd, message, content_length + op_hdinit_packet_length, 0);
-=======
-	// bzero(buffer, 256);
+	int n = send(sockfd, message, content_length + op_hsinit_packet_header_length, 0);
 
-	// n = read(sockfd, buffer, 255);
+	return n;
+}
 
-	// printf("RECV: %s\n", buffer);
->>>>>>> f6c7c2a6c0d1badb247d0dc148b3b58db2d5d42f
 
-	if(n < 0)
-		printf("Error writing to socket\n");
+// OP_HS_ACK Packet:
+// 2 Byte OP_CODE (unsigned int, OP_HANDSHAKE_ACK)
+int recv_op_hsack(int sockfd)
+{
+	int n;
+	unsigned int opcode;
 
-<<<<<<< HEAD
-=======
-	return 0;
+	// read 2 bytes for the opcode
+	n = read(sockfd, &opcode, 2);
+
+	opcode = ntohs(opcode);
+
+	if(opcode == OP_HANDSHAKE_ACK)
+	{
+		printf("Recieved HS ACK.\n");
+		return 1;
+	}
+	else 
+	{
+		printf("ERROR: WRONG OP CODE RECIEVED (expected %s, got %s)\n", optos(OP_HANDSHAKE_INIT), optos(opcode));
+		return 0;
+	}
+}
+
+// OP_DISCONNECT packet:
+// 2 byte opcode (unsigned int, OP_DISCONNECT)
+int send_op_disconnect(int sockfd)
+{
+	// set aside some space for the message
+	char *message = malloc(sizeof(char) * (op_disconnect_packet_length));
+	bzero(message, op_disconnect_packet_length);
+	
+	// now the op code
+	unsigned int opcode = htons(OP_DISCONNECT);
+	memcpy((void *) message, (void *) &opcode, 2); 
+
+	int n = send(sockfd, message, op_disconnect_packet_length, 0);
+
+	return n;
+}
+
+// OP_CONSULT Packet:
+// 2 Byte OP_CODE (unsigned int, OP_CONSULT)
+// 4 Byte File name length (fnamelength)
+// <fnamelength> Bytes File name
+int send_op_consult(char *fname, int sockfd)
+{
+	// the query returned will be the op code
+	unsigned int content_length = strlen(fname);
+
+	// set aside some space for the message
+	char *message = malloc(sizeof(char) * (content_length + op_consult_packet_header_length));
+	bzero(message, (content_length + op_consult_packet_header_length));
+	
+	// now the op code
+	unsigned int opcode = htons(OP_CONSULT);
+	memcpy((void *) message, (void *) &opcode, 2); 
+
+	// now the query length
+	unsigned int cls = htonl(content_length);
+	memcpy((void *) message+2, (void *) &cls, 4); 
+
+	// now the query string
+	strcpy(message+op_consult_packet_header_length, fname);
+
+	int n = send(sockfd, message, content_length + op_consult_packet_header_length, 0);
+
+	return n;
 }
 
 // OP_QUERY Packet:
-// 4 Bytes Total Message Length (unsigned int) (message[0 - 3])
-// 4 Byte OP_CODE (unsigned int) (message[4 - 7])
-// 4 Bytes Query String Length (unsigned int) (message[8 - 11])
-// <Query String Length> Bytes Query String
-//
-// Returned value is allocated using malloc
-// so it should be freed when done
-char* build_op_query(char *query)
+// 2 Byte OP_CODE (unsigned int, OP_QUERY)
+// 4 Byte Query string length (querylength)
+// <querylength> Bytes query string
+int send_op_query(char *query, int sockfd)
 {
 	// the query returned will be the op code
-	unsigned int query_length = strlen(query);
+	unsigned int content_length = strlen(query);
 
 	// set aside some space for the message
-	char *message = malloc(sizeof(char) * query_length + 16);
-
-	// start with the network encoded length
-	unsigned int network_encoded_len = (unsigned int) htonl((unsigned long int) (4 + query_length)); 
-	memcpy((void *) message, (void *) &network_encoded_len, 4); 
+	char *message = malloc(sizeof(char) * (content_length + op_query_packet_header_length));
+	bzero(message, (content_length + op_query_packet_header_length));
 	
 	// now the op code
-	// memcpy((void *) message+4, (void *) &OP_QUERY, 2); 
-	strncpy(message+4, itoa(OP_QUERY), 2); 
+	unsigned int opcode = htons(OP_QUERY);
+	memcpy((void *) message, (void *) &opcode, 2); 
 
 	// now the query length
-	// memcpy((void *) message+6, (void *) &query_length, 2); 
-	strncpy(message+6, itoa(query_length), 2); 
+	unsigned int cls = htonl(content_length);
+	memcpy((void *) message+2, (void *) &cls, 4); 
 
 	// now the query string
-	strcpy(message+8, query);
+	strcpy(message+op_query_packet_header_length, query);
 
-	printf("message: %s\n", message + 4);
->>>>>>> f6c7c2a6c0d1badb247d0dc148b3b58db2d5d42f
+	int n = send(sockfd, message, content_length + op_query_packet_header_length, 0);
 
-	return message;
+	return n;
+}
+
+// OP_GET_RESULT packet:
+// 2 byte opcode (unsigned int, OP_GET_RESULT)
+int send_op_get_result(int sockfd)
+{
+	// set aside some space for the message
+	char *message = malloc(sizeof(char) * (op_get_result_length));
+	bzero(message, op_get_result_length);
+	
+	// now the op code
+	unsigned int opcode = htons(OP_GET_RESULT);
+	memcpy((void *) message, (void *) &opcode, 2); 
+
+	int n = send(sockfd, message, op_get_result_length, 0);
+
+	return n;
 }

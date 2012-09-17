@@ -1,25 +1,146 @@
-:- import socket/2, socket_bind/3, socket_listen/3, socket_accept/3, socket_getL/3, socket_getS/3, socket_get0/3 from socket.
+:- import 	socket/2, socket_bind/3, socket_listen/3, socket_accept/3, socket_close/2,
+			socket_getL/3, socket_getS/3, socket_get0/3, socket_putS/3, socket_putL/3 
+			from socket.
 
-<<<<<<< HEAD
+:- import	read_atom_to_term/2, term_to_atom/2 
+			from string.
+
 server() :- server(99, _, _).
 server(Port, ServerSocket, ConnectionSocket) :- 
 	socket(ServerSocket, _SocketError),
 	socket_bind(ServerSocket, Port, _BindError),
 	socket_listen(ServerSocket, 1000, _ConnectError),
 	socket_accept(ServerSocket, ConnectionSocket, _SocketError),
+	%% for my own sanity close the server connection
+	socket_close(ServerSocket, _CloseError),
+	%% send a handchake to the new client
 	recv_handshakeInit(ConnectionSocket).
 
 
+%% Recieves an initial packet for the handshake
+%% this packet is:
+%% 	2 byte opcode.
+%%	4 byte machine name length (mlength).
+%%	<mlength> byte machine name.
 recv_handshakeInit(Socket) :-	
-	opcode(ExOpcode, 'OP_HS_INIT'),
-	socket_getS(Socket, Opcode, Error),
+	opcode(ExOpcode, 'OP_HANDSHAKE_INIT'),
+	socket_getS(Socket, Opcode, _OPCodeError),
 	check_opcode(ExOpcode, Opcode)
 	->
-		socket_getL(Socket, MessageLength, Error),
+		socket_getL(Socket, MessageLength, _MLengthError),
 		socket_get0N(Socket, MessageLength, MachineName),
-		write('Machine Name: '), writeln(MachineName)
+		write('Recieved HS request from '), writeln(MachineName),
+		send_handshakeAck(Socket, MachineName)
 	.
 
+%% Sends an acknowledgement packet for the handshake
+%% this packet is simply a 2 byte opcode.
+send_handshakeAck(Socket, MachineName) :-
+	opcode(Opcode, 'OP_HANDSHAKE_ACK'),
+	socket_putS(Socket, Opcode, _Error),
+	write('HS Complete with "'), write(MachineName), writeln('" waiting for queries'),
+	recv_command(Socket, MachineName).
+
+%% Read and opcode and direct the server to the correct handler
+%% (given by the command/3 predicate).
+recv_command(Socket, MachineName) :-
+	socket_getS(Socket, Opcode, _OPCodeError),
+	opcode(Opcode, OpcodeStr),
+	command(OpcodeStr, Socket, MachineName).
+
+%%
+%% COMMAND: OP_UNKNOWN
+%% PRINT An Error and send an OP_ERROR
+%%
+command('OP_UNKNOWN', Socket, MachineName) :-
+	write('Uknown OPCODE Recieved from '), write(MachineName), writeln(', disconnecting.'),
+	disconnect(Socket), !.
+
+%%
+%% COMMAND: OP_DISCONNECT
+%% Close the connection
+%% PACKET:
+%%	2 byte OP_CODE
+%%
+command('OP_DISCONNECT', Socket, MachineName) :-
+	write('OP_DISCONNECT Recieved from '), write(MachineName), writeln(', disconnecting.'),
+	disconnect(Socket), !.
+
+%%
+%% COMMAND: OP_CONSULT
+%% Consult a file into memory
+%%
+%% PACKET:
+%% 	2 byte OP_CODE
+%%  4 byte FILENAME LENGTH <length>
+%%  <length> byte FILENAME
+%%
+command('OP_CONSULT', Socket, MachineName) :-
+	socket_getL(Socket, MessageLength, _MLengthError),
+	socket_get0N(Socket, MessageLength, Filename),
+	write('OP_CONSULT ('), write(Filename), write(') Recieved from '), writeln(MachineName),
+	consult(Filename), 
+	recv_command(Socket, MachineName), !.
+
+%% COMMAND: OP_QUERY
+%% Execute a query and wait for a new command before proceeding.
+%% After executing the query, this predicate will wait for an opcode
+%% when an opcode is recived, if it is OP_GET_RESULT we will send an OP_RESULT 
+%% packet. Otherwise the opcode will be passed to command/3.
+%%
+%% Structurally this command is identical to OP_CONSULT and OP_HANDSHAKE_INIT.
+%%
+%% PACKET:
+%% 	2 byte OP_CODE
+%%  4 byte QUERY LENGTH <length>
+%%  <length> byte QUERY
+%%
+command('OP_QUERY', Socket, MachineName) :-
+	socket_getL(Socket, MessageLength, _MLengthError),
+	socket_get0N(Socket, MessageLength, Query),
+	write('OP_QUERY ('), write(Query), write(') Recieved from '), writeln(MachineName),
+	(
+		read_atom_to_term(Query, QueryTerm),
+		writeln(QueryTerm),
+		call(QueryTerm)
+		-> (
+			% get the next opcode
+			socket_getS(Socket, ResultOpcode, _ResultOpCodeError),
+			opcode(ResultOpcode, 'OP_GET_RESULT') 
+			->
+			(
+				% send a result packet
+				writeln('RESULT PACKET'),
+				fail
+			), fail
+			;
+			(
+				% pass the command on to the correct handler
+				opcode(ResultOpcode, ROpStr),
+				command(ROpStr, Socket, MachineName), !
+			), fail
+		)
+		; (	
+			% get the next opcode
+			socket_getS(Socket, ResultOpcode, _ResultOpCodeError),
+			opcode(ResultOpcode, 'OP_GET_RESULT') 
+			->
+				% send a fail packet
+				writeln('FAIL PACKET'),
+				recv_command(Socket, MachineName), !
+			;
+			(	
+				% pass the command on to the correct handler
+				opcode(ResultOpcode, ROpStr),
+				command(ROpStr, Socket, MachineName)
+			)
+		)
+	), !.
+
+%% Close the client connection.
+disconnect(Socket) :-
+	write('Disconnecting socket '), writeln(Socket),
+	socket_close(Socket, _Error), !.
 
 %% loads a String of lenth N from the Socket provided
 socket_get0N(Socket, N, Buffer) :-
@@ -45,30 +166,12 @@ check_opcode(Expected, Actual) :-
 		fail
 	.
 
-opcode(1, 'OP_HS_INIT') 	:- !.
-opcode(_, 'UNKNOWN') 		:- !.
-=======
-:- [socket].
-?- [socket].
+%% Define names for each opcode
+opcode(1, 'OP_HANDSHAKE_INIT') 		:- !.
+opcode(2, 'OP_HANDSHAKE_ACK') 		:- !.
+opcode(3, 'OP_DISCONNECT') 			:- !.
+opcode(4, 'OP_CONSULT') 			:- !.
+opcode(5, 'OP_QUERY') 				:- !.
+opcode(6, 'OP_GET_RESULT') 			:- !.
+opcode(_, 'OP_UNKNOWN') 			:- !.
 
-
-open_socket(Port, ServerSocket, ConnectionSocket) :- 
-	socket(ServerSocket, _SocketError),
-	socket_bind(ServerSocket, Port, _BindError),
-	socket_listen(ServerSocket, 1000, _ConnectError),
-	socket_accept(ServerSocket, ConnectionSocket, _SocketError).
-
-server_start(Port) :-
-	socket(ServerSocket, _SocketError),
-	socket_bind(ServerSocket, Port, _BindError),
-	socket_listen(ServerSocket, 1000, _ConnectError),
-	socket_accept(ServerSocket, ConnectionSocket, _SocketError),
-	waitingState(ConnectionSocket).
-
-
-waitingState(Client) :-
-	writeln('Server Entering Waiting State.'),
-	socket_recv(Client, Message, _RecvError),
-	% Look at the first character of the socket message, that is the opcode
-	
->>>>>>> f6c7c2a6c0d1badb247d0dc148b3b58db2d5d42f

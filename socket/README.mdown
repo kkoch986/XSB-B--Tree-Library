@@ -45,10 +45,40 @@ static int socket_getS(CTXTdeclc int *rc, unsigned int *val, int timeout) {
     return TIMED_OUT;
   }
 }
+
+static int socket_putL(CTXTdeclc int *rc, int timeout) {
+  SOCKET sock_handle;
+  uint32_t tmpch = 0;
+    
+  sock_handle = (SOCKET) ptoc_int(CTXTc 2);
+  tmpch = htonl(ptoc_int(CTXTc 3));
+
+  if (write_select(sock_handle, timeout)) {
+    *rc = sendto(sock_handle, &tmpch, 4, 0, NULL,0);
+    return NORMAL_TERMINATION;
+  } else {
+    return TIMED_OUT;
+  }
+}
+
+static int socket_putS(CTXTdeclc int *rc, int timeout) {
+  SOCKET sock_handle;
+  uint16_t tmpch = 0;
+    
+  sock_handle = (SOCKET) ptoc_int(CTXTc 2);
+  tmpch = htons(ptoc_int(CTXTc 3));
+
+  if (write_select(sock_handle, timeout)) {
+    *rc = sendto(sock_handle, &tmpch, 2, 0, NULL,0);
+    return NORMAL_TERMINATION;
+  } else {
+    return TIMED_OUT;
+  }
+}
 ===========================================================================
 
 ===========================================================================
-Added the following to socket_xsb.c (around line 681):
+Added the following to socket_xsb.c (around line 681 or 731 if you applied the update above):
 ---------------------------------------------------------------------------
 
 case SOCKET_GETL:
@@ -99,7 +129,45 @@ case SOCKET_GETS:
       }
          
       return set_error_code(CTXTc ecode,  4,  "SOCKET_GET0");
-    }  
+    } 
+
+  case SOCKET_PUTL:
+    /* socket_request(SOCKET_PUT,+Sockfd,+C,-Error_,_,_) */
+    timeout_flag = socket_putL(CTXTc &rc, (int)pflags[SYS_TIMER]);
+    if(rc > 0) rc = 1; // reset the RC value since it is used for error checking, not measuring the number of bytes read.
+         
+    if (timeout_flag == TIMED_OUT) {
+      return set_error_code(CTXTc TIMEOUT_ERR, 4, "SOCKET_SEND");
+    } else {
+      /* error handling */
+      if (rc == 1) {
+        ecode = SOCK_OK;
+      } else if (SOCKET_OP_FAILED(rc)) {
+        ecode = XSB_SOCKET_ERRORCODE;
+        perror("SOCKET_PUTL");
+      }
+         
+      return set_error_code(CTXTc ecode,  4,  "SOCKET_PUT");
+    }
+
+  case SOCKET_PUTS:
+    /* socket_request(SOCKET_PUT,+Sockfd,+C,-Error_,_,_) */
+    timeout_flag = socket_putS(CTXTc &rc, (int)pflags[SYS_TIMER]);
+    if(rc > 0) rc = 1; // reset the RC value since it is used for error checking, not measuring the number of bytes read.
+         
+    if (timeout_flag == TIMED_OUT) {
+      return set_error_code(CTXTc TIMEOUT_ERR, 4, "SOCKET_SEND");
+    } else {
+      /* error handling */
+      if (rc == 1) {
+        ecode = SOCK_OK;
+      } else if (SOCKET_OP_FAILED(rc)) {
+        ecode = XSB_SOCKET_ERRORCODE;
+        perror("SOCKET_PUTS");
+      }
+         
+      return set_error_code(CTXTc ecode,  4,  "SOCKET_PUT");
+    } 
 ===========================================================================
 
 ===========================================================================
@@ -108,16 +176,20 @@ added the following to socket.P (XSB/lib/socket.P):
 
 socket_getL(Sockfd,Char,Error) :-
   socket_request(SOCKET_GETL,Sockfd,Char,Error,_,_,_).
-
 socket_getS(Sockfd,Char,Error) :-
   socket_request(SOCKET_GETS,Sockfd,Char,Error,_,_,_).
+socket_putL(Sockfd,Char,Error) :-
+  socket_request(SOCKET_PUTL,Sockfd, Char,Error,_,_,_).
+socket_putS(Sockfd,Char,Error) :-
+  socket_request(SOCKET_PUTS,Sockfd, Char,Error,_,_,_).
+  
 ===========================================================================
 
 ===========================================================================
 Added the following to socket.H (XSB/lib/socket.H):
 ---------------------------------------------------------------------------
 
-:- export socket_getL/3, socket_getS/3.
+:- export socket_getL/3, socket_getS/3, socket_putL/3, socket_putS/3.
 ===========================================================================
 
 ===========================================================================
@@ -126,4 +198,6 @@ Added the following to sockets_defs_xsb.h:
 
 #define SOCKET_GETL         17
 #define SOCKET_GETS         18
+#define SOCKET_PUTL         19
+#define SOCKET_PUTS         20
 ===========================================================================

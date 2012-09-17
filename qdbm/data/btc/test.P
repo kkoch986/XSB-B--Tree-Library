@@ -110,6 +110,7 @@ nqfile_to_btree(FN, PREFIX) :-
 	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
 	walltime(T3),
 	btinit(PREFIX/4, 1, Handle),		%% index on the "subject"
+	btstrans(Handle),
 	btsize(Handle, InitialSize),
 	(
 		nqnextclean(R),
@@ -117,6 +118,7 @@ nqfile_to_btree(FN, PREFIX) :-
 		fail ; true
 	),
 	btsize(Handle, Size),
+	btctrans(Handle),
 	btclose(Handle),
 	walltime(T4),
 	BuildTime is T4 - T3,
