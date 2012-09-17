@@ -280,6 +280,129 @@ DllExport int call_conv bt_close(CTXTdecl)
 }
 
 /**
+ * bt_insert_keep/2.
+ * Inserts the given term into the B+ Tree given by the second argument if and only if
+ * we are unable to determine that that value is already in the tree.
+ * The B+ Tree must match on predicate symbol and arity and will be indexed on 
+ * the same argument as others in that table.
+ *
+ * bt_insert(+Handle, +Term).
+ **/
+DllExport int call_conv bt_insert_keep(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+
+	if(handle_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable handle = villas[handle_index];
+
+	// now confirm the pred name and arity for this predicate
+	prolog_term value = reg_term(CTXTdeclc 2);
+
+	if(!is_functor(value))
+	{
+		fprintf(stderr, 
+			"Insert Error: Insert Argument Is Not A Functor.\n");
+		return FALSE;
+	}
+
+	int arity = p2c_arity(value);
+	char *predname = p2c_functor(value);
+
+	if(arity != handle.arity)
+	{
+		fprintf(stderr, "Insert Error: Arity Mismatch (Got %i, Expecting %i).\n", arity, handle.arity);
+		return FALSE;
+	}
+
+	if(strcmp(predname, handle.predname) != 0)
+	{
+		fprintf(stderr, "Insert Error: Functor Mismatch (Got '%s', Expecting '%s').\n", predname, handle.predname);
+		return FALSE;	
+	}
+
+	int indexon = handle.argnum;
+
+	// This check may be redundant...indexon < arity is checked in INIT and the indexon argument is taken
+	// from the IndexTable.
+	if(indexon > arity)
+	{
+		fprintf(stderr, "Insert Error: Index on Argument Number Greater Than Predicate Arity.\n");
+		return FALSE;
+	}
+
+	// Now do the actual insert...
+	prolog_term key = p2p_arg(value, indexon);
+	char *buff = canonical_term(CTXTdecl key, 1);
+	int size = cannonical_term_size(CTXTdecl) + 1;
+	char *key_str = malloc(sizeof(char) * size);
+	strncpy(key_str, buff, size);
+
+	buff = canonical_term(CTXTdecl value, 1);
+	size = cannonical_term_size(CTXTdecl) + 1;
+	char *val_str = malloc(sizeof(char) * size);
+	strncpy(val_str, buff, size);
+	//char *val_str = pt2str(value);
+	//char *key_str = pt2str(key);
+
+	// try to look it up first
+	CBLIST *activeList = vlgetlist(villas[handle_index].villa, key_str, -1);
+	char *value_str = NULL;
+	
+	char found = 0;
+	do {
+		
+		free(value_str);
+		value_str = cblistpop(activeList, NULL);
+
+		if(value_str == NULL)
+			break ;
+
+		if(strcmp(value_str, val_str) == 0)
+		{
+			found = 1;
+			break ;
+		}			
+
+	} while(value_str != NULL && activeList != NULL);
+	
+	if(found == 0 && !vlput(handle.villa, key_str, -1, val_str, -1, VL_DDUP))
+	{
+    	fprintf(stderr, "Insert Error (DB): %s\n", dperrmsg(dpecode));
+    	return FALSE;
+	}
+
+	//free(val_str);
+	//free(key_str);
+
+	// ---------------------------------------------
+	// -- DEBUG -- PRINT OUT THE TERM --------------
+	// ---------------------------------------------
+	if(DEBUG == 1)
+	{
+		debugprintf("Insert Term: (Key: %s, Value: %s)\n", key_str, val_str);
+		int lsize = vlrnum(handle.villa);
+		debugprintf("B+ Tree (%s) Size: %i\n", handle.predname, lsize);
+	}
+	// ---------------------------------------------
+	// ---------------------------------------------
+
+	return TRUE;
+}
+
+/**
  * bt_drop/2.
  * This will delete a database file.
  * CAll with: bt_drop(+Predname/Arity, +IndexOn).
@@ -466,49 +589,9 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 		return FALSE;
 	}
 
-	struct IndexTable tree = villas[tree_index];
-
-	// // First get the handle and find if that CBL still exists.
-	// prolog_term cbl_term = reg_term(CTXTdecl 1);
-	// if(!is_int(cbl_term))
-	// {
-	// 	fprintf(stderr, "Get Next Error: CBL Handle Not Integer.\n");
-	// 	return FALSE;	
-	// } 
-
-	// int handle = p2c_int(cbl_term);
-
-	// // search for the cbl term
-	// struct ActiveLookupListNode *traveller = cblHead;
-
-	// int found = 0;
-	// while(traveller != NULL)
-	// {
-	// 	if(traveller->index == handle)
-	// 	{
-	// 		found = 1;
-	// 		break ;
-	// 	}
-
-	// 	if(traveller->prev == NULL) break ;
-	// 	traveller = traveller->prev;
-	// }
-
-	// if(found == 0)
-	// {
-	// 	debugprintf("Unable to find CBL %i\n", handle);
-	// 	return FALSE;
-	// }
-
-	// debugprintf("FOUND CBL: %i\n", traveller->index);
-
-	// retrieve the next value from the CBL
-	// if(traveller->list == NULL) 
-	// {
-	// 	debugprintf("List Empty (never full).\n");
-	// 	return FALSE;
-	// }
-	char *value = cblistpop(tree.activeList, NULL);
+	char *value = NULL;
+	if(villas[tree_index].activeList != NULL)
+		value = cblistpop(villas[tree_index].activeList, NULL);
 
 	if(value == NULL)
 	{
@@ -526,14 +609,12 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 		// free(traveller);
 		return FALSE;
 	}
-
 	// unify the string and return
 	STRFILE strfile;
 	strfile.strcnt = strlen(value);
 	strfile.strptr = value; strfile.strbase = value;
 
 	read_canonical_term(CTXTdecl NULL, &strfile, 1);
-
 	return TRUE;
 }
 
@@ -838,6 +919,12 @@ int mcm_cur_ops(CTXTdecl int operation)
 	char *key_str;
 	char *value;
 	STRFILE strfile;
+	int proposedSize;
+	int actualSize;
+	int changed = 0;
+
+	// for cur enc repair:
+	char fone = 1;
 
 	// the first argument is the handle to the tree
 	prolog_term tree_term = reg_term(CTXTdecl 1);
@@ -856,7 +943,7 @@ int mcm_cur_ops(CTXTdecl int operation)
 	}
 
 	// verify the tree is in prefix mode
-	if(villas[tree_index].cursorMode != MANUAL_CURSOR_MODE)
+	if(villas[tree_index].cursorMode != MANUAL_CURSOR_MODE && operation != 11 && operation != 10)
 	{
 		fprintf(stderr, "MCM Error: Tree is not currently in MCM mode (%i).\n", villas[tree_index].cursorMode);
 		return FALSE;
@@ -941,9 +1028,7 @@ int mcm_cur_ops(CTXTdecl int operation)
 			strfile.strcnt = strlen(value);
 			
 			strfile.strptr = value; strfile.strbase = value;
-			//printf("BT -> RCT: %s (%i)\n", strfile.strptr, strlen(value));
 			read_canonical_term(CTXTdecl NULL, &strfile, 1);
-			//printf("\n");
 			return TRUE;
 		case 8: // mcm_next_key
 			value = vlcurkey(villas[tree_index].villa, NULL);
@@ -959,6 +1044,82 @@ int mcm_cur_ops(CTXTdecl int operation)
 				local = vlcurkey(villas[tree_index].villa, NULL);
 
 			} while( strcmp(local, value) == 0 );
+
+			return TRUE;
+		case 9: // mcm_cur_out
+			if(!vlcurout(villas[tree_index].villa))
+			{
+				fprintf(stderr, "MCM CUR OUT Error: vlcurout Error.\n");
+				return FALSE;	
+			}
+			return TRUE;
+
+		case 10: // export
+
+			// get the filename
+			key = reg_term(CTXTdecl 2);
+			buff = canonical_term(CTXTdecl key, 1);
+			size = cannonical_term_size(CTXTdecl) + 1;
+			key_str = malloc(sizeof(char) * size);
+			strncpy(key_str, buff, size);
+
+			if(!vlexportdb(villas[tree_index].villa, buff))
+			{
+				fprintf(stderr, "BT EXPORT DB Error: vlexportdb Error.\n");
+				return FALSE;	
+			}
+			return TRUE;
+
+		case 11: // import
+			// get the filename
+			key = reg_term(CTXTdecl 2);
+			buff = canonical_term(CTXTdecl key, 1);
+			size = cannonical_term_size(CTXTdecl) + 1;
+			key_str = malloc(sizeof(char) * size);
+			strncpy(key_str, buff, size);
+
+			if(!vlimportdb(villas[tree_index].villa, buff))
+			{
+				fprintf(stderr, "BT IMPORT DB Error: vlimportdb Error.\n");
+				return FALSE;	
+			}
+			return TRUE;
+
+		case 12: // bt_cur_enc_repair
+			fone = 0;
+		case 13: // bt_cur_enc_repair_fone
+
+			// get the value at the curso
+			value = vlcurval(villas[tree_index].villa, &proposedSize);
+			actualSize = strlen(value);
+
+			printf("Proposed Value Size: %i (actual size %i)\n", proposedSize, actualSize);
+
+			int x;
+			for(x = 0; x < proposedSize; x++)
+			{
+				if(value[x] == 0)
+				{
+					changed++;
+					value[x] = '?';
+				}
+			}
+
+			if(changed > 0)
+			{
+				printf("%i Bad Character(s) replaced, saving back to DB.\n", changed);
+				if(!vlcurput(villas[tree_index].villa, value, -1, VL_CPCURRENT))
+				{
+					fprintf(stderr, "BT Cursor Value Repair Error: vlcurput Error.\n");
+					return FALSE;	
+				}
+			}
+			else
+			{
+				printf("No Bad Characters Found in: %s.\n", value);
+				if(fone == 1)
+					return FALSE;
+			}
 
 			return TRUE;
 
@@ -988,6 +1149,28 @@ DllExport int call_conv bt_mcm_val(CTXTdecl) { return mcm_cur_ops(CTXTdecl 7);	 
 /** bt_mcm_next_key/1. Jump the cursor to the next record with a unique key in the tree. **/
 DllExport int call_conv bt_mcm_next_key(CTXTdecl) { return mcm_cur_ops(CTXTdecl 8);	 }
 
+/** bt_mcm_out/1. Deletes the current record indicated by the cursor. **/
+DllExport int call_conv bt_mcm_out(CTXTdecl) { return mcm_cur_ops(CTXTdecl 9);	 }
+
+/** Functions for backup and restoring databases **/
+/** bt_export/2. Exports the given database to the given filename. **/
+/** bt_export(TreeHandle, DestinationFileName).		**/
+DllExport int call_conv bt_export(CTXTdecl) { return mcm_cur_ops(CTXTdecl 10);	 }
+
+/** bt_import/2. Imports all of the facts from the given database export to **/
+/** the given databse. NOTE: the file must have been generated using bt_export/2. **/
+/** bt_import(TreeHandle, SourceFileName).		**/
+DllExport int call_conv bt_import(CTXTdecl) { return mcm_cur_ops(CTXTdecl 11);	 }
+
+/** Attempts to repair a record which encounters EOF characters or other encoding **/
+/** errors on read_canonical calls. Succeeds if a repair is made without error, or no repair is made**/
+DllExport int call_conv bt_cur_enc_repair(CTXTdecl) { return mcm_cur_ops(CTXTdecl 12);	 }
+
+/* same as bt_cur_enc_repair, but fails if no repair is made. */
+DllExport int call_conv bt_cur_enc_repair_fone(CTXTdecl) { return mcm_cur_ops(CTXTdecl 13);	 }
+
+
+
 /*
  The function `vlcurput' is used in order to insert a record around the cursor.
 
@@ -995,8 +1178,6 @@ int vlcurput(VILLA *villa, const char *vbuf, int vsiz, int cpmode);
 `villa' specifies a database handle connected as a writer. `vbuf' specifies the pointer to the region of a value. `vsiz' specifies the size of the region of the value. If it is negative, the size is assigned with `strlen(vbuf)'. `cpmode' specifies detail adjustment: `VL_CPCURRENT', which means that the value of the current record is overwritten, `VL_CPBEFORE', which means that a new record is inserted before the current record, `VL_CPAFTER', which means that a new record is inserted after the current record. If successful, the return value is true, else, it is false. False is returned when no record corresponds to the cursor. After insertion, the cursor is moved to the inserted record.
 The function `vlcurout' is used in order to delete the record where the cursor is.
 
-int vlcurout(VILLA *villa);
-`villa' specifies a database handle connected as a writer. If successful, the return value is true, else, it is false. False is returned when no record corresponds to the cursor. After deletion, the cursor is moved to the next record if possible.
 */
 
 
@@ -1130,6 +1311,35 @@ DllExport int call_conv bt_trans_abort(CTXTdecl)
 	if(!vltranabort(villas[handle_index].villa))
 	{
 		fprintf(stderr, "TRANSACTION Error: vltranabort Error.\n");
+		return FALSE;	
+	}
+
+	return TRUE;
+}
+
+
+/** bt_repair/1 attempts to repair corrupted databases **/
+DllExport int call_conv bt_repair(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term predicate = reg_term(CTXTdecl 1);
+	prolog_term indexon = reg_term(CTXTdecl 2);
+	int index_arg = p2c_int(indexon);
+	// TODO: Sanity checking on input args
+	char *predname = p2c_string(p2p_arg(predicate, 1));
+	int arity = p2c_int(p2p_arg(predicate, 2));
+
+	if(index_arg > arity)
+	{
+		fprintf(stderr, "Error: Index on Argument Number Greater Than Predicate Arity (Arity %i, index on: %i).\n", arity, index_arg);
+		return FALSE;
+	}
+
+	char *db_name = pt2dbname(predname, arity, index_arg);
+
+	if(!vlrepair(db_name, VL_CMPLEX))
+	{
+		fprintf(stderr, "Repair Unsuccessful: vlrepair Error.\n");
 		return FALSE;	
 	}
 

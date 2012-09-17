@@ -2,7 +2,7 @@
 
 %% bt_init/0. Initializes a B+ Villa DB
 :- export bt_init/3, bt_close/1, bt_size/2.
-:- export bt_insert/2.
+:- export bt_insert/2, bt_insert_keep/2.
 :- export bt_get/3, bt_getl/2, bt_getnext/2.
 :- export bt_drop/2.
 
@@ -17,9 +17,17 @@
 :- export bt_mcm_jump/2, bt_mcm_jump_rev/2.
 :- export bt_mcm_key/2, bt_mcm_val/2.
 :- export bt_mcm_next_key/1.
+:- export bt_mcm_out/1.
 
 % get info about a tree
 :- export bt_tree_name/2.
 
 % transactions
 :- export bt_trans_start/1, bt_trans_commit/1, bt_trans_abort/1.
+
+% backup/restore
+:- export bt_export/2, bt_import/2.
+
+% repairing 
+:- export bt_cur_enc_repair/1, bt_cur_enc_repair_fone/1.
+:- export bt_repair/2.

@@ -1,94 +1,166 @@
 
-?- [nqparse], ['../../bt'], ['../../bt_p'].
+% ?- [nqparse], ['../../bt'], ['../../bt_p'].
 
-tb() :- 
+firstset() :- 
 	% parse everything
 	walltime(T1),
-	nqparse('projects/btc-2012/datahub/data-0.nq'),
-	nqparse('projects/btc-2012/datahub/data-1.nq'),
-	nqparse('projects/btc-2012/datahub/data-2.nq'),
-	nqparse('projects/btc-2012/datahub/data-3.nq'),
-	nqparse('projects/btc-2012/datahub/data-4.nq'),
+	nqfile_to_btree('/media/Warehouse/BTC_Data/data/data-01.nq', quad),
 	walltime(T2),
 	ParseTime is T2 - T1,
-	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
-	walltime(T3),
-	btinit(quad/4, 1, Handle),
-	btsize(Handle, InitialSize),
-	(
-		nqnext(R),
-		btinsert(Handle, R ),
-		fail ; true
-	),
-	btsize(Handle, Size),
-	btclose(Handle),
-	walltime(T4),
-	BuildTime is T4 - T3,
-	Added is Size - InitialSize,
-	write('Added '), write(Added), writeln(' entries.'),
-	write('Parsing Time: '), write(ParseTime), writeln(' seconds.'),
-	write('Building Time: '), write(BuildTime), writeln(' seconds.').
+	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
 
-buildbt(File) :-
-	btdrop(quad/4, 1),
-	appendbt(File).
-
-appendbt(File) :-
+secondset(Name) :-
+	string:concat_atom(['/media/Warehouse/BTC_Data/data/d3/', Name], FName),
+	% parse everything
 	walltime(T1),
-	nqload(File),
+	nqfile_to_btree(FName, quad),
 	walltime(T2),
-	btinit(quad/4, 1, Handle),
-	btsize(Handle, InitialSize),
-	(
-		nqnext(R),
-		%writeln(R),
-		btinsert(Handle, R ),
-		fail ; true
-	),
-	btsize(Handle, Size),
-	btclose(Handle),
-	walltime(T3),
 	ParseTime is T2 - T1,
-	BuildTime is T3 - T2,
-	Added is Size - InitialSize,
-	write('Added '), write(Added), writeln(' entries.'),
-	write('Parsing Time: '), write(ParseTime), writeln(' seconds.'),
-	write('Building Time: '), write(BuildTime), writeln(' seconds.').
+	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
 
-
-
-
-small_test_load() :- small_test_load('data-0.nq').
-small_test_load(FN) :-
+repsecondset() :-
 	walltime(T1),
-	nqprefix(quad),
+	load_split_files_repair(40, '/media/Warehouse/BTC_Data/data/d3'),
+	walltime(T2),
+	ParseTime is T2 - T1,
+	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
+
+thirdset() :- 
+	% parse everything
+	walltime(T1),
+	load_split_files(405, '/media/Warehouse/BTC_Data/data/d4'),
+	walltime(T2),
+	ParseTime is T2 - T1,
+	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
+
+%% projects/btc-2012/datahub/d3/xab
+load_split_files(NumberOfFiles, RootDir) :-
+	%% compute the name of this file in the sequence.
+	NumberOfFiles @>= 0,
+	ThirdNumber is NumberOfFiles mod 26,
+	letter_for_number(ThirdNumber, ThirdLetter),
+	SecondNumber is NumberOfFiles // 26,
+	letter_for_number(SecondNumber, SecondLetter),
+	%write('x'), write(SecondLetter), writeln(ThirdLetter),
+	%% process this file
+	walltime(T1),
+	string:concat_atom([RootDir, '/', x, SecondLetter, ThirdLetter, '.clean'], File),
+	nqfile_to_btree(File, quad),
+	walltime(T2),
+	ParseTime is T2 - T1,
+	write('Processed Datahub file ('), write(File), write(') in '), write(ParseTime), writeln(' seconds.'),
+	%% load the next file.
+	Next is NumberOfFiles - 1,
+	load_split_files(Next, RootDir).
+
+load_split_files_repair(NumberOfFiles, RootDir) :-
+	%% compute the name of this file in the sequence.
+	NumberOfFiles @>= 0,
+	ThirdNumber is NumberOfFiles mod 26,
+	letter_for_number(ThirdNumber, ThirdLetter),
+	SecondNumber is NumberOfFiles // 26,
+	letter_for_number(SecondNumber, SecondLetter),
+	%write('x'), write(SecondLetter), writeln(ThirdLetter),
+	%% process this file
+	walltime(T1),
+	string:concat_atom([RootDir, '/', x, SecondLetter, ThirdLetter, '.clean'], File),
+	nqfile_to_btree_repair(File, quad),
+	walltime(T2),
+	ParseTime is T2 - T1,
+	write('Processed Datahub file ('), write(File), write(') in '), write(ParseTime), writeln(' seconds.'),
+	%% load the next file.
+	Next is NumberOfFiles - 1,
+	load_split_files(Next, RootDir).
+
+letter_for_number(X, a) :- X @=< 0.
+letter_for_number(1, b).
+letter_for_number(2, c).
+letter_for_number(3, d).
+letter_for_number(4, e).
+letter_for_number(5, f).
+letter_for_number(6, g).
+letter_for_number(7, h).
+letter_for_number(8, i).
+letter_for_number(9, j).
+letter_for_number(10, k).
+letter_for_number(11, l).
+letter_for_number(12, m).
+letter_for_number(13, n).
+letter_for_number(14, o).
+letter_for_number(15, p).
+letter_for_number(16, q).
+letter_for_number(17, r).
+letter_for_number(18, s).
+letter_for_number(19, t).
+letter_for_number(20, u).
+letter_for_number(21, v).
+letter_for_number(22, w).
+letter_for_number(23, x).
+letter_for_number(24, y).
+letter_for_number(25, z).
+
+
+small_test_load() :- nqfile_to_btree('data-0.nq', quad).
+nqfile_to_btree(FN, PREFIX) :-
+	walltime(T1),
+	nqprefix(PREFIX),
 	nqload(FN),
 	walltime(T2),
 	ParseTime is T2 - T1,
 	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
 	walltime(T3),
-	btinit(quad/4, 1, Handle),		%% index on the "subject"
-	tell('log.P'),
+	btinit(PREFIX/4, 1, Handle),		%% index on the "subject"
 	btsize(Handle, InitialSize),
 	(
 		nqnextclean(R),
-		write_canonical(R), nl,
 		btinsert(Handle, R),
 		fail ; true
 	),
-	told,
 	btsize(Handle, Size),
 	btclose(Handle),
 	walltime(T4),
 	BuildTime is T4 - T3,
 	Added is Size - InitialSize,
 	write('Added '), write(Added), writeln(' entries.'),
-	write('Parsing Time: '), write(ParseTime), writeln(' seconds.'),
 	write('Building Time: '), write(BuildTime), writeln(' seconds.').
 
-getall() :- btinit(quad/4,1,X), btgetall(X, _Y),  writeln(_Y), fail.
+nqfile_to_btree_repair(FN, PREFIX) :-
+	walltime(T1),
+	nqprefix(PREFIX),
+	nqload(FN),
+	walltime(T2),
+	ParseTime is T2 - T1,
+	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
+	walltime(T3),
+	btinit(PREFIX/4, 1, Handle),		%% index on the "subject"
+	btsize(Handle, InitialSize),
+	(
+		nqnextclean(R),
+		btinsertkeep(Handle, R),
+		fail ; true
+	),
+	btsize(Handle, Size),
+	btclose(Handle),
+	walltime(T4),
+	BuildTime is T4 - T3,
+	Added is Size - InitialSize,
+	write('Added '), write(Added), writeln(' entries.'),
+	write('Building Time: '), write(BuildTime), writeln(' seconds.').
+
+getall() :- walltime(T1), ( btinit(quad/4,1,X), btgetall(X, _Y),  fail ; true), walltime(T2), Time is T2 - T1, writeln(Time).
 
 :- import platform/1 from shell.
 
 clean :- shell('rm -f *.dylib *.xwam *.o *.so').
 scrub :- shell('rm -rf db_*').
+
+graph_trace(Handle, Key) :- graph_trace(Handle, Key, '').
+graph_trace(Handle, Key, TabLevel) :- 
+	write(TabLevel), write('Node: '), writeln(Key),
+	string:concat_atom([TabLevel, '\t'], NewTabLevel),
+	(
+		btget(Handle, Key, quad(Subject, Predicate, Value, _Graph)),
+		write(Subject), write('----'), write(Predicate), write('--->'), writeln(Value),
+		graph_trace(Handle, Value, NewTabLevel),
+		fail
+	) ; true.
