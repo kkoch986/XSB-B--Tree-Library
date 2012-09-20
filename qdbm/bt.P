@@ -2,28 +2,28 @@
 %% Load the C Library
 %% ?- [bt].
 
-:- import bt_init/3 from bt.
-:- import bt_close/1 from bt.
-:- import bt_size/2 from bt.
-:- import bt_insert/2, bt_insert_keep/2 from bt.
-:- import bt_get/3 from bt.
-:- import bt_getl/2 from bt.
-:- import bt_getnext/2 from bt.
-:- import bt_drop/2 from bt.
-:- import bt_prefix_jump/2, bt_prefix_next/2 from bt.
-:- import bt_range_init/3, bt_range_next/2 from bt.
-:- import bt_mcm_init/1 from bt.
-:- import bt_mcm_first/1, bt_mcm_last/1 from bt.
-:- import bt_mcm_next/1, bt_mcm_prev/1 from bt.
-:- import bt_mcm_jump/2, bt_mcm_jump_rev/2 from bt.
-:- import bt_mcm_key/2, bt_mcm_val/2 from bt.
-:- import bt_mcm_next_key/2 from bt.
-:- import bt_mcm_out/1 from bt.
-:- import bt_tree_name/2 from bt.
-:- import bt_trans_start/1, bt_trans_commit/1, bt_trans_abort/1 from bt.
-:- import bt_cur_enc_repair/1, bt_cur_enc_repair_fone/1 from bt.
-:- import bt_repair/2 from bt.
-:- import bt_export/2, bt_import/2 from bt.
+:- import bt_init/3 from bt_c.
+:- import bt_close/1 from bt_c.
+:- import bt_size/2 from bt_c.
+:- import bt_insert/2, bt_insert_keep/2 from bt_c.
+:- import bt_get/3 from bt_c.
+:- import bt_getl/2 from bt_c.
+:- import bt_getnext/2 from bt_c.
+:- import bt_drop/2 from bt_c.
+:- import bt_prefix_jump/2, bt_prefix_next/2 from bt_c.
+:- import bt_range_init/3, bt_range_next/2 from bt_c.
+:- import bt_mcm_init/1 from bt_c.
+:- import bt_mcm_first/1, bt_mcm_last/1 from bt_c.
+:- import bt_mcm_next/1, bt_mcm_prev/1 from bt_c.
+:- import bt_mcm_jump/2, bt_mcm_jump_rev/2 from bt_c.
+:- import bt_mcm_key/2, bt_mcm_val/2 from bt_c.
+:- import bt_mcm_next_key/2 from bt_c.
+:- import bt_mcm_out/1 from bt_c.
+:- import bt_tree_name/2 from bt_c.
+:- import bt_trans_start/1, bt_trans_commit/1, bt_trans_abort/1 from bt_c.
+:- import bt_cur_enc_repair/1, bt_cur_enc_repair_fone/1 from bt_c.
+:- import bt_repair/2 from bt_c.
+:- import bt_export/2, bt_import/2 from bt_c.
 
 :- import numbervars/3, unnumbervars/3 from num_vars.
 
