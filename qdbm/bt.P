@@ -23,8 +23,18 @@
 :- import bt_trans_start/1, bt_trans_commit/1, bt_trans_abort/1 from bt.
 :- import bt_cur_enc_repair/1, bt_cur_enc_repair_fone/1 from bt.
 :- import bt_repair/2 from bt.
+:- import bt_export/2, bt_import/2 from bt.
 
 :- import numbervars/3, unnumbervars/3 from num_vars.
+
+:- export btinit/3, btclose/1, btsize/2, btdrop/2, btname/2.
+:- export btinsert/2, btinsertkeep/2.
+:- export btget/3, btprefix/3, btrange/4, btgetall/2, btgetall_rev/2, 
+			btgetall_key/2, btgetall_key_rev/2.
+:- export btimport/2, btexport/2, btpurgecorrupt/1, btrepair/2.
+:- export btminit/1, btmfirst/1, btmlast/1, btmnext/1, btmprev/1, 
+			btmjump/2, btmjump_rev/2, btmkey/2, btmval/2, btmout/1.
+:- export btstrans/1, btctrans/1, btatrans/1.
 
 %% This function will initialize a btree
 btinit(Pred/Arity, Argument, Handle) :- bt_init(Pred/Arity, Argument, Handle).

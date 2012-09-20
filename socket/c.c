@@ -95,7 +95,7 @@ int main()
 	send_op_consult("../qdbm/bt_p", sockfd);
 
 	// now the fun part, send some queries
-	send_op_query("assert(a(b,c)), assert(a(c,d)", sockfd);
+	send_op_query("assert(a(b,c)), assert(a(c,d))", sockfd);
 	//sleep(5);
 	send_op_query("a(X,Y), writeln(X)", sockfd);
 	//send_op_query("btinit(quad/4,1,_X), btgetall(_X, Y)", sockfd);

@@ -18,15 +18,6 @@ secondset(N) :-
 	ParseTime is T2 - T1,
 	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
 
-secondset_wc(N) :-
-	% parse everything
-	walltime(T1),
-	%nqfile_to_btree(FName, quad),
-	load_split_files_to_text(N, '/media/Warehouse/BTC_Data/data/d3'),
-	walltime(T2),
-	ParseTime is T2 - T1,
-	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
-
 thirdset(N) :- 
 	% parse everything
 	walltime(T1),
@@ -48,30 +39,6 @@ load_split_files(NumberOfFiles, RootDir) :-
 	walltime(T1),
 	string:concat_atom([RootDir, '/', x, SecondLetter, ThirdLetter, '.clean'], File),
 	nqfile_to_btree(File, quad),
-	walltime(T2),
-	ParseTime is T2 - T1,
-	write('Processed Datahub file ('), write(File), write(') in '), write(ParseTime), writeln(' seconds.'), nl, nl,
-	%% load the next file.
-	Next is NumberOfFiles - 1,
-	gc_atoms,
-	gc_heap,
-	gc_tables(_),
-	load_split_files(Next, RootDir).
-
-load_split_files_to_text(NumberOfFiles, RootDir) :-
-	%% compute the name of this file in the sequence.
-	NumberOfFiles @>= 0,
-	ThirdNumber is NumberOfFiles mod 26,
-	letter_for_number(ThirdNumber, ThirdLetter),
-	SecondNumber is NumberOfFiles // 26,
-	letter_for_number(SecondNumber, SecondLetter),
-	%write('x'), write(SecondLetter), writeln(ThirdLetter),
-	%% process this file
-	walltime(T1),
-	string:concat_atom([RootDir, '/', x, SecondLetter, ThirdLetter, '.clean'], File),
-	%tell('wclog.txt'),
-	nqfile_to_wc(File, quad),
-	%told,
 	walltime(T2),
 	ParseTime is T2 - T1,
 	write('Processed Datahub file ('), write(File), write(') in '), write(ParseTime), writeln(' seconds.'), nl, nl,
