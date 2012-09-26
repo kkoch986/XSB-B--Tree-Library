@@ -40,22 +40,28 @@ load_split_files(NumberOfFiles, RootDir) :-
 	%% compute the name of this file in the sequence.
 	NumberOfFiles @>= 0,
 	ThirdNumber is NumberOfFiles mod 26,
+	writeln('Letter for number.'),
 	letter_for_number(ThirdNumber, ThirdLetter),
 	SecondNumber is NumberOfFiles // 26,
 	letter_for_number(SecondNumber, SecondLetter),
 	%write('x'), write(SecondLetter), writeln(ThirdLetter),
 	%% process this file
 	walltime(T1),
+	writeln('Concat Atom.'),
 	string:concat_atom([RootDir, '/', x, SecondLetter, ThirdLetter, '.clean'], File),
+	write('Enter nqfile_to_btree('), write(File), writeln(').'),
 	nqfile_to_btree(File, quad),
+	writeln('Exit nqfile_to_btree.'),
 	walltime(T2),
 	ParseTime is T2 - T1,
 	write('Processed Datahub file ('), write(File), write(') in '), write(ParseTime), writeln(' seconds.'), nl, nl,
 	%% load the next file.
 	Next is NumberOfFiles - 1,
+	writeln('Start GC.'),
 	gc_atoms,
 	gc_heap,
 	gc_tables(_),
+	writeln('Finish GC, Start next iteration.'),
 	load_split_files(Next, RootDir).
 
 load_split_files_to_text(NumberOfFiles, RootDir) :-
@@ -114,23 +120,32 @@ letter_for_number(25, z).
 small_test_load() :- nqfile_to_btree('data-0.nq', quad).
 nqfile_to_btree(FN, PREFIX) :-
 	walltime(T1),
+	writeln('Start Parsing File.'),
 	nqprefix(PREFIX),
 	nqload(FN),
 	walltime(T2),
 	ParseTime is T2 - T1,
 	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
 	walltime(T3),
+	writeln('intialize btree.'),
 	btinit(PREFIX/4, 1, Handle),		%% index on the "subject"
+	writeln('Start Transaction.'),
 	btstrans(Handle),
 	btsize(Handle, InitialSize),
 	(
+		writeln('nqnext.'),
 		nqnextclean(R),
+		writeln('btinsert.'),
 		btinsert(Handle, R),
+		writeln('finish insert.'),
 		fail ; true
 	),
+	writeln('commit trans.'),
 	btctrans(Handle),
 	btsize(Handle, Size),
+	writeln('close tree.'),
 	btclose(Handle),
+	writeln('finish close tree.'),
 	walltime(T4),
 	BuildTime is T4 - T3,
 	Added is Size - InitialSize,

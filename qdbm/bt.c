@@ -154,6 +154,7 @@ DllExport int call_conv bt_init(CTXTdecl)
  *
  * bt_insert(+Handle, +Term).
  **/
+int insertCount = 0;
 DllExport int call_conv bt_insert(CTXTdecl)
 {
 	// Find the IndexTable associated with the handle.
@@ -164,6 +165,7 @@ DllExport int call_conv bt_insert(CTXTdecl)
 		return FALSE;
 	}
 
+	printf("get handle\n");
 	int handle_index = p2c_int(handle_term);
 
 	if(handle_index >= nextIndex)
@@ -175,8 +177,10 @@ DllExport int call_conv bt_insert(CTXTdecl)
 	struct IndexTable handle = villas[handle_index];
 
 	// now confirm the pred name and arity for this predicate
+	printf("reg term\n");
 	prolog_term value = reg_term(CTXTdeclc 2);
 
+	printf("functor check\n");
 	if(!is_functor(value))
 	{
 		fprintf(stderr, 
@@ -184,6 +188,7 @@ DllExport int call_conv bt_insert(CTXTdecl)
 		return FALSE;
 	}
 
+	printf("arity and predname\n");
 	int arity = p2c_arity(value);
 	char *predname = p2c_functor(value);
 
@@ -193,6 +198,7 @@ DllExport int call_conv bt_insert(CTXTdecl)
 		return FALSE;
 	}
 
+	printf("strcmp predname \n");
 	if(strcmp(predname, handle.predname) != 0)
 	{
 		fprintf(stderr, "Insert Error: Functor Mismatch (Got '%s', Expecting '%s').\n", predname, handle.predname);
@@ -210,24 +216,32 @@ DllExport int call_conv bt_insert(CTXTdecl)
 	}
 
 	// Now do the actual insert...
+	printf("begin insert (p2p_arg to get the index key)\n");
 	prolog_term key = p2p_arg(value, indexon);
+	printf("call canonical term on key\n");
 	char *buff = canonical_term(CTXTdecl key, 1);
 	int size = cannonical_term_size(CTXTdecl) + 1;
 	char *key_str = malloc(sizeof(char) * size);
+	printf("strcpy the key string into a buffer\n");
 	strncpy(key_str, buff, size);
 
+	printf("canonical term on value\n");
 	buff = canonical_term(CTXTdecl value, 1);
 	size = cannonical_term_size(CTXTdecl) + 1;
 	char *val_str = malloc(sizeof(char) * size);
+	printf("strcpy the value\n");
 	strncpy(val_str, buff, size);
 	//char *val_str = pt2str(value);
 	//char *key_str = pt2str(key);
 
+	printf("vall to vlput(%d): %s [%s]\n",insertCount, val_str, key_str);
 	if(!vlput(handle.villa, key_str, -1, val_str, -1, VL_DDUP))
 	{
     	fprintf(stderr, "Insert Error (DB): %s\n", dperrmsg(dpecode));
     	return FALSE;
 	}
+
+	insertCount++;
 
 	//free(val_str);
 	//free(key_str);
@@ -235,15 +249,17 @@ DllExport int call_conv bt_insert(CTXTdecl)
 	// ---------------------------------------------
 	// -- DEBUG -- PRINT OUT THE TERM --------------
 	// ---------------------------------------------
-	if(DEBUG == 1)
-	{
-		debugprintf("Insert Term: (Key: %s, Value: %s)\n", key_str, val_str);
-		int lsize = vlrnum(handle.villa);
-		debugprintf("B+ Tree (%s) Size: %i\n", handle.predname, lsize);
-	}
+	// if(DEBUG == 1)
+	// {
+	// 	debugprintf("Insert Term: (Key: %s, Value: %s)\n", key_str, val_str);
+	// 	int lsize = vlrnum(handle.villa);
+	// 	debugprintf("B+ Tree (%s) Size: %i\n", handle.predname, lsize);
+	// }
 	// ---------------------------------------------
 	// ---------------------------------------------
 
+	printf("finished.......\n");
+	printf("---------------------------------------------------------------------------\n");
 	return TRUE;
 }
 
