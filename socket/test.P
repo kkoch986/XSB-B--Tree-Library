@@ -99,30 +99,34 @@ command('OP_QUERY', Socket, MachineName) :-
 	socket_getL(Socket, MessageLength, _MLengthError),
 	socket_get0N(Socket, MessageLength, Query),
 	write('OP_QUERY ('), write(Query), write(') Recieved from '), writeln(MachineName),
+	trace,
 	(
 		read_atom_to_term(Query, QueryTerm),
 		writeln(QueryTerm),
 		call(QueryTerm)
 		-> (
+			writeln('pass'),
 			% get the next opcode
-			socket_getS(Socket, ResultOpcode, _ResultOpCodeError),
-			opcode(ResultOpcode, 'OP_GET_RESULT') 
-			->
+			socket_getS(Socket, ResultOpcode, _ResultOpCodeError), !, 
+			writeln('pass2'),
 			(
-				% send a result packet
-				writeln('RESULT PACKET'),
-				fail
-			), fail
-			;
-			(
-				% pass the command on to the correct handler
-				opcode(ResultOpcode, ROpStr),
-				command(ROpStr, Socket, MachineName), !
-			), fail
+				opcode(ResultOpcode, 'OP_GET_RESULT') 
+				->
+					(
+						% send a result packet
+						writeln('RESULT PACKET')
+					)
+				;
+					(
+						% pass the command on to the correct handler
+						opcode(ResultOpcode, ROpStr),
+						command(ROpStr, Socket, MachineName), !
+					), fail
+			)
 		)
 		; (	
 			% get the next opcode
-			socket_getS(Socket, ResultOpcode, _ResultOpCodeError),
+			socket_getS(Socket, ResultOpcode, _ResultOpCodeError), !, 
 			opcode(ResultOpcode, 'OP_GET_RESULT') 
 			->
 				% send a fail packet

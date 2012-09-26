@@ -29,5 +29,4 @@
 :- export bt_export/2, bt_import/2.
 
 % repairing 
-:- export bt_cur_enc_repair/1, bt_cur_enc_repair_fone/1.
 :- export bt_repair/2.
