@@ -5,7 +5,7 @@
 :- import bt_init/3 from bt_c.
 :- import bt_close/1 from bt_c.
 :- import bt_size/2 from bt_c.
-:- import bt_insert/2, bt_insert_keep/2 from bt_c.
+:- import bt_insert/2 from bt_c.
 :- import bt_getl/2 from bt_c.
 :- import bt_getnext/2 from bt_c.
 :- import bt_drop/2 from bt_c.
@@ -52,12 +52,6 @@ btdrop(Pred/Arity, Argument) :- bt_drop(Pred/Arity, Argument).
 btinsert(Handle, Term) :- 
 	numbervars(Term, 0, _),
 	bt_insert(Handle, Term).
-
-%% insert a term into a B+ Tree only if it doesnt exist already
-btinsertkeep(Handle, Term) :- 
-	numbervars(Term, 0, _),
-	bt_insert_keep(Handle, Term).
-
 	
 %% Non-Deterministically find terms that match the key exactly.
 btget(TreeHandle, Key, Value) :- 
