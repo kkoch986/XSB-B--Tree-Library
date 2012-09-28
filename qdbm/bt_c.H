@@ -1,10 +1,13 @@
 :- ldoption('-lqdbm -B/usr/local/lib').
 
+%% new create stuff
+:- export bt_create/3.
+
 %% bt_init/0. Initializes a B+ Villa DB
-:- export bt_init/3, bt_close/1, bt_size/2.
+:- export bt_init/2, bt_close/1, bt_size/2.
 :- export bt_insert/2.
 :- export bt_get/3, bt_getl/2, bt_getnext/2.
-:- export bt_drop/2.
+:- export bt_drop/1.
 
 %% prefix and range queries
 :- export bt_prefix_jump/2, bt_prefix_next/2.
@@ -26,7 +29,7 @@
 :- export bt_trans_start/1, bt_trans_commit/1, bt_trans_abort/1.
 
 % backup/restore
-:- export bt_export/2, bt_import/2.
+% :- export bt_export/2, bt_import/2.
 
 % repairing 
-:- export bt_repair/2.
+% :- export bt_repair/2.

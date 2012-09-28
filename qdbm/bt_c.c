@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 /* XSB Includes */
 #include "xsb_config.h"
@@ -23,6 +25,7 @@
 //#include <villa.h>
 
 #define DBNAME "xsbdb"
+#define BNUM 10
 #define MAXLINE 4096
 
 static const int DEBUG = 0;
@@ -49,6 +52,7 @@ struct IndexTable
 {
 	VILLA *villa;
 	char *predname;
+	char *dbname;
 	int arity;
 	int argnum;
 	int open;
@@ -62,22 +66,107 @@ struct IndexTable
 	CBLIST *activeList;
 };
 
-// struct ActiveLookupListNode
-// {
-// 	int index;
-// 	CBLIST *list;
-// 	struct ActiveLookupListNode *next;
-// 	struct ActiveLookupListNode *prev;
-// };
-
 // pointer to our B+ trees.
 static struct IndexTable *villas;
 static int currentSize = 10;
 static int nextIndex = 0;
 
-// pointer to active CBLISTS being used to return results.
-// static struct ActiveLookupListNode *cblHead;
-// static int nextCBLIndex = 0;
+/** 
+ * bt_create/3.
+ * Creates the necessary stucture to hold a database for the given predicate.
+ * Call with: bt_create(DBName, Pred/Arity, Argument) 
+ *
+ * NOTE: a call to this does not do any intitalzion or loading, 
+ * just creates the blank databases on disk and returns yes if it
+ * can do so with no conflicts.
+ **/
+DllExport int call_conv bt_create(CTXTdecl)
+{
+	DEPOT *meta_depot;
+
+	// get the arguments passed in
+    prolog_term db_name_t 	= reg_term(CTXTdecl 1);
+    prolog_term predicate   = reg_term(CTXTdecl 2);
+    prolog_term indexon     = reg_term(CTXTdecl 3);
+
+    // TODO: Sanity checking on input args
+    char *db_name           = p2c_string(db_name_t);
+    char *predname          = p2c_string(p2p_arg(predicate, 1));
+    int arity               = p2c_int(p2p_arg(predicate, 2));
+    int index_arg           = p2c_int(indexon);
+
+	// create a directory named by the db_name
+	if(mkdir(db_name, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
+	{
+		fprintf(stderr, "Unable to create Database Directory\n");
+		return FALSE;
+	}
+
+	// create a b+ tree called db in that directory.
+	char buff[strlen(db_name) + 10];
+	sprintf(buff, "%s/db", db_name);
+
+	if(!(vlopen(buff, VL_OWRITER | VL_OCREAT, VL_CMPLEX))) {
+		fprintf(stderr, "vlopen: %s\n", dperrmsg(dpecode));
+		return FALSE;
+	}
+
+	// now create a DEPOT for storing meta data about this btree.
+	// at this stage the only meta data we need (which is the only required
+	// data) is the sotred predname, arity and index on argument number.
+	// DEPOT *dpopen(const char *name, int omode, int bnum)
+	sprintf(buff, "%s/meta", db_name);
+
+	if(!(meta_depot = dpopen(buff, DP_OWRITER | DP_OCREAT, BNUM))) {
+		fprintf(stderr, "dpopen: %s\n", dperrmsg(dpecode));
+		return FALSE;
+	}
+
+	// now start adding the meta data to the depot.
+	// int dpput(DEPOT *depot, const char *kbuf, int ksiz, const char *vbuf, int vsiz, int dmode);
+
+	// the database name
+	if(!dpput(meta_depot, "dbname", -1, db_name, -1, DP_DOVER))
+	{
+		fprintf(stderr, "dpput (dbname): %s\n", dperrmsg(dpecode));
+		return FALSE;
+	}
+
+	// the predicate name
+	if(!dpput(meta_depot, "predicate", -1, predname, -1, DP_DOVER))
+	{
+		fprintf(stderr, "dpput (predicate): %s\n", dperrmsg(dpecode));
+		return FALSE;
+	}
+
+	// the predicate arity
+	sprintf(buff, "%d", arity);
+	if(!dpput(meta_depot, "arity", -1, buff, -1, DP_DOVER))
+	{
+		fprintf(stderr, "dpput (arity): %s\n", dperrmsg(dpecode));
+		return FALSE;
+	}
+
+	// the index on number
+	sprintf(buff, "%d", index_arg);
+	if(!dpput(meta_depot, "index_arg", -1, buff, -1, DP_DOVER))
+	{
+		fprintf(stderr, "dpput (index_arg): %s\n", dperrmsg(dpecode));
+		return FALSE;
+	}
+
+	// now close the meta depot
+	// int dpclose(DEPOT *depot);
+	if(!dpclose(meta_depot))
+	{
+		fprintf(stderr, "dpclose: %s\n", dperrmsg(dpecode));
+		return FALSE;
+	}
+
+	// all done :-)
+
+	return TRUE;
+}
 
 /**
  * bt_init/3. 
@@ -109,31 +198,46 @@ DllExport int call_conv bt_init(CTXTdecl)
 
 	/* compute the DB name */
 	/* as db_predname_arity_indexargnum */
-	prolog_term predicate = reg_term(CTXTdecl 1);
-	prolog_term indexon = reg_term(CTXTdecl 2);
-	prolog_term handle = reg_term(CTXTdecl 3);
-	int index_arg = p2c_int(indexon);
-	// TODO: Sanity checking on input args
-	char *predname = p2c_string(p2p_arg(predicate, 1));
-	int arity = p2c_int(p2p_arg(predicate, 2));
+	prolog_term db_name = reg_term(CTXTdecl 1);
+	prolog_term handle = reg_term(CTXTdecl 2);
 
-	if(index_arg > arity)
+	char *db_name_str = p2c_string(db_name);
+
+	char buff[MAXLINE];
+	sprintf(buff, "%s/meta", db_name_str);
+	
+	/* load the meta DEPOT for this database **/
+	// DEPOT *dpopen(const char *name, int omode, int bnum);
+	DEPOT *depot;
+	if(!(depot = dpopen(buff, DP_OREADER, BNUM)))
 	{
-		fprintf(stderr, "Error: Index on Argument Number Greater Than Predicate Arity (Arity %i, index on: %i).\n", arity, index_arg);
+		fprintf(stderr, "dpopen: %s\n", dperrmsg(dpecode));
 		return FALSE;
 	}
 
-	char *db_name = pt2dbname(predname, arity, index_arg);
+	// get the predname
+	// char *dpget(DEPOT *depot, const char *kbuf, int ksiz, int start, int max, int *sp);
+    char *predname          = dpget(depot, "predicate", -1, 0, -1, NULL);
+    char *arity_str         = dpget(depot, "arity", -1, 0, -1, NULL);
+    char *index_arg_str     = dpget(depot, "index_arg", -1, 0, -1, NULL);
+
+    int arity       = atoi(arity_str);
+    int index_arg   = atoi(index_arg_str);
+
+    free(arity_str);
+    free(index_arg_str);
+
+    sprintf(buff, "%s/db", db_name_str);
 
 	villas[nextIndex].arity = arity;
 	villas[nextIndex].predname = predname;
 	villas[nextIndex].argnum = index_arg;
 	villas[nextIndex].open = 0;
+	villas[nextIndex].dbname = db_name_str;
 	villas[nextIndex].cursorMode = NOT_INITIALIZED;
 	/* open the database */
-	if(!(villas[nextIndex].villa = vlopen(db_name, VL_OWRITER | VL_OCREAT, VL_CMPLEX))){
+	if(!(villas[nextIndex].villa = vlopen(buff, VL_OWRITER | VL_OCREAT, VL_CMPLEX))){
 		fprintf(stderr, "vlopen: %s\n", dperrmsg(dpecode));
-		free(db_name);
 		return FALSE;
 	}
 	villas[nextIndex].open = 1;
@@ -145,7 +249,6 @@ DllExport int call_conv bt_init(CTXTdecl)
 
 	nextIndex++;
 
-	free(db_name);
 	return TRUE;
 }
 
@@ -262,34 +365,22 @@ DllExport int call_conv bt_close(CTXTdecl)
 	}
 
 	// mark this index table as closed.
-	handle.open = 0;
+	villas[handle_index].open = FALSE;
 
 	return TRUE;
 }
 
 /**
- * bt_drop/2.
+ * bt_drop/1.
  * This will delete a database file.
- * CAll with: bt_drop(+Predname/Arity, +IndexOn).
+ * CAll with: bt_drop(+DBName).
  **/
 DllExport int call_conv bt_drop(CTXTdecl) 
 {
 	/* compute the DB name */
 	/* as db_predname_arity_indexargnum */
-	prolog_term predicate = reg_term(CTXTdecl 1);
-	prolog_term indexon = reg_term(CTXTdecl 2);
-	int index_arg = p2c_int(indexon);
-	// TODO: Sanity checking on input args
-	char *predname = p2c_string(p2p_arg(predicate, 1));
-	int arity = p2c_int(p2p_arg(predicate, 2));
-
-	if(index_arg > arity)
-	{
-		fprintf(stderr, "Error: Index on Argument Number Greater Than Predicate Arity (Arity %i, index on: %i).\n", arity, index_arg);
-		return FALSE;
-	}
-
-	char *db_name = pt2dbname(predname, arity, index_arg);
+	prolog_term db_name_t = reg_term(CTXTdecl 1);
+	char *db_name = p2c_string(db_name_t);
 
 	// Do a quick search to make sure this table was not opened in
 	// a handle
@@ -299,30 +390,39 @@ DllExport int call_conv bt_drop(CTXTdecl)
 		struct IndexTable i = villas[x];
 		if(i.open == TRUE)
 		{
-			if(strcmp(i.predname, predname) == 0)
+			if(strcmp(i.dbname, db_name) == 0)
 			{
-				if(i.arity == arity && i.argnum == indexon)
-				{
-					// match, fails
-					debugprintf("This Tree has an open handle(%i), please close all handles before dropping the tree.\n", x);
-					return FALSE;
-				}
+				// match, fails
+				printf("This Tree has an open handle(%i), please close all handles before dropping the tree.\n", x);
+				return FALSE;
 			}
 		}
 	}
 
 	// actually drop the tree.
-	if(vlremove(db_name))
-	{
-		free(db_name);
-		return TRUE;
-	}
-	else
+	char buff[MAXLINE];
+	sprintf(buff, "%s/db", db_name);
+
+	if(!vlremove(buff))
 	{
 		debugprintf("WARNING: Unable to drop tree (%s), maybe it is missing?\n", db_name);
-		free(db_name);
+	}
+
+	// delete the meta file
+	sprintf(buff, "%s/meta", db_name);
+
+	if(!dpremove(buff))
+	{
+		debugprintf("WARNING: Unable to drop meta data file (%s), maybe it is missing?\n", db_name);
+	}
+
+	// delete the whole directory
+	if(rmdir(db_name) >= 0)
+	{
 		return TRUE;
 	}
+
+	return FALSE;
 }
 
 
@@ -993,19 +1093,19 @@ DllExport int call_conv bt_mcm_out(CTXTdecl) { return mcm_cur_ops(CTXTdecl 9);	 
 /** Functions for backup and restoring databases **/
 /** bt_export/2. Exports the given database to the given filename. **/
 /** bt_export(TreeHandle, DestinationFileName).		**/
-DllExport int call_conv bt_export(CTXTdecl) { return mcm_cur_ops(CTXTdecl 10);	 }
+// DllExport int call_conv bt_export(CTXTdecl) { return mcm_cur_ops(CTXTdecl 10);	 }
 
 /** bt_import/2. Imports all of the facts from the given database export to **/
 /** the given databse. NOTE: the file must have been generated using bt_export/2. **/
 /** bt_import(TreeHandle, SourceFileName).		**/
-DllExport int call_conv bt_import(CTXTdecl) { return mcm_cur_ops(CTXTdecl 11);	 }
+// DllExport int call_conv bt_import(CTXTdecl) { return mcm_cur_ops(CTXTdecl 11);	 }
 
 /** Attempts to repair a record which encounters EOF characters or other encoding **/
 /** errors on read_canonical calls. Succeeds if a repair is made without error, or no repair is made**/
-DllExport int call_conv bt_cur_enc_repair(CTXTdecl) { return mcm_cur_ops(CTXTdecl 12);	 }
+// DllExport int call_conv bt_cur_enc_repair(CTXTdecl) { return mcm_cur_ops(CTXTdecl 12);	 }
 
 /* same as bt_cur_enc_repair, but fails if no repair is made. */
-DllExport int call_conv bt_cur_enc_repair_fone(CTXTdecl) { return mcm_cur_ops(CTXTdecl 13);	 }
+// DllExport int call_conv bt_cur_enc_repair_fone(CTXTdecl) { return mcm_cur_ops(CTXTdecl 13);	 }
 
 
 
@@ -1066,7 +1166,7 @@ DllExport int call_conv bt_tree_name(CTXTdecl)
 		return FALSE;
 	}
 
-	extern_ctop_string(CTXTdecl 2, vlname(villas[handle_index].villa));
+	extern_ctop_string(CTXTdecl 2, villas[handle_index].dbname);
 	
 	return TRUE;
 }
