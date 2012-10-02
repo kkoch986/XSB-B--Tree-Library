@@ -48,10 +48,12 @@ test_odbc:-
 ?- ['../../bt'], ['../../bt_p'].
 
 build_btree(X) :- 
-	btdrop(p/2,1),
+	btdrop(testdb),
 	walltime(T1),
-	btinit(p/2, 1, Handle),
+	btcreate(testdb, p/2, 1),
+	btinit(testdb, Handle),
 	build_btree_iterate(X, Handle),
+	btclose(Handle),
 	walltime(T2),
 	Time is T2 - T1,
 	write('Built B+ Tree with '), write(X), write(' elements in '), write(Time), writeln(' seconds').
