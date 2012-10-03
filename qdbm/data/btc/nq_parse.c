@@ -66,7 +66,10 @@ static struct raptor_node_item build_term(raptor_term *triple)
 	  		//printf("uri( %s )", raptor_uri_as_string(triple->value.uri));
 
 	  		if(triple->value.uri == NULL)
-	  			n.arg1 = "";
+			{
+	  			n.arg1 = malloc(1);
+	  			strcpy(n.arg1, "");
+	  		}
 	  		else 
 	  		{
 	  			int size = strlen(raptor_uri_as_string(triple->value.uri));
@@ -82,7 +85,10 @@ static struct raptor_node_item build_term(raptor_term *triple)
 
 	  		// literal string
 	  		if(triple->value.literal.string == NULL)
-	  			n.arg1 = " ";
+	  		{
+	  			n.arg1 = malloc(1);
+	  			strcpy(n.arg1, "");
+	  		}
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.literal.string);
@@ -93,7 +99,10 @@ static struct raptor_node_item build_term(raptor_term *triple)
 
 	  		// datatype string
 	  		if(triple->value.literal.datatype == NULL)
-	  			n.arg2 = " ";
+	  		{
+	  			n.arg2 = malloc(1);
+	  			strcpy(n.arg2, "");
+	  		}
 	  		else 
 	  		{
 	  			int size = strlen(raptor_uri_as_string(triple->value.literal.datatype));
@@ -104,7 +113,10 @@ static struct raptor_node_item build_term(raptor_term *triple)
 
 	  		// language string
 	  		if(triple->value.literal.language == NULL)
-	  			n.arg3 = " ";
+	  		{
+	  			n.arg3 = malloc(1);
+	  			strcpy(n.arg3, "");
+	  		}
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.literal.language);
@@ -119,7 +131,10 @@ static struct raptor_node_item build_term(raptor_term *triple)
 	  		 //printf("blank( %s )", triple->value.blank.string);
 
 	  		if(triple->value.blank.string == NULL)
-	  			n.arg1 = " ";
+	  		{
+	  			n.arg1 = malloc(1);
+	  			strcpy(n.arg1, "");
+	  		}
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.blank.string);
@@ -316,11 +331,12 @@ DllExport int call_conv get_next_result(CTXTdecl)
 	if(old_head->object.arg1 != NULL)
 		free(old_head->object.arg1);
 
-	//if(old_head->object.arg2 != NULL)
-	// 	free(old_head->object.arg2);
+	if(old_head->object.arg2 != NULL)
+		free(old_head->object.arg2);
 
-	//if(old_head->object.arg3 != NULL)
-	//	free(old_head->object.arg3);	
+	if(old_head->object.arg3 != NULL)
+		free(old_head->object.arg3);
+
 	
 	//printf("4");
 	if(old_head->graph.arg1 != NULL)
