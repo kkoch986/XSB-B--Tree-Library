@@ -52,6 +52,9 @@ static struct raptor_node_item build_term(raptor_term *triple)
 {
 	struct raptor_node_item n;
 	n.type = triple->type;
+	n.arg1 = NULL;
+	n.arg2 = NULL;
+	n.arg3 = NULL;
 
 	switch(triple->type)
 	{
@@ -79,7 +82,7 @@ static struct raptor_node_item build_term(raptor_term *triple)
 
 	  		// literal string
 	  		if(triple->value.literal.string == NULL)
-	  			n.arg1 = "";
+	  			n.arg1 = " ";
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.literal.string);
@@ -90,7 +93,7 @@ static struct raptor_node_item build_term(raptor_term *triple)
 
 	  		// datatype string
 	  		if(triple->value.literal.datatype == NULL)
-	  			n.arg2 = "";
+	  			n.arg2 = " ";
 	  		else 
 	  		{
 	  			int size = strlen(raptor_uri_as_string(triple->value.literal.datatype));
@@ -101,7 +104,7 @@ static struct raptor_node_item build_term(raptor_term *triple)
 
 	  		// language string
 	  		if(triple->value.literal.language == NULL)
-	  			n.arg3 = "";
+	  			n.arg3 = " ";
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.literal.language);
@@ -116,7 +119,7 @@ static struct raptor_node_item build_term(raptor_term *triple)
 	  		 //printf("blank( %s )", triple->value.blank.string);
 
 	  		if(triple->value.blank.string == NULL)
-	  			n.arg1 = "";
+	  			n.arg1 = " ";
 	  		else 
 	  		{
 	  			int size = strlen(triple->value.blank.string);
@@ -288,10 +291,50 @@ DllExport int call_conv get_next_result(CTXTdecl)
 		head = head->prev;
 
 	// free up the strings
-	// free_node(old_head->subject);
-	// free_node(old_head->predicate);
-	// free_node(old_head->object);
-	// free_node(old_head->graph);
+	//printf("1");
+	if(old_head->subject.arg1 != NULL)
+		free(old_head->subject.arg1);
+
+	if(old_head->subject.arg2 != NULL)
+		free(old_head->subject.arg2);
+
+	if(old_head->subject.arg3 != NULL)
+		free(old_head->subject.arg3);	
+	
+	//printf("2");
+	if(old_head->predicate.arg1 != NULL)
+		free(old_head->predicate.arg1);
+
+	if(old_head->predicate.arg2 != NULL)
+		free(old_head->predicate.arg2);
+	
+	if(old_head->predicate.arg3 != NULL)
+		free(old_head->predicate.arg3);
+
+
+	//printf("3");
+	if(old_head->object.arg1 != NULL)
+		free(old_head->object.arg1);
+
+	//if(old_head->object.arg2 != NULL)
+	// 	free(old_head->object.arg2);
+
+	//if(old_head->object.arg3 != NULL)
+	//	free(old_head->object.arg3);	
+	
+	//printf("4");
+	if(old_head->graph.arg1 != NULL)
+		free(old_head->graph.arg1);
+
+	if(old_head->graph.arg2 != NULL)
+		free(old_head->graph.arg2);
+
+	if(old_head->graph.arg3 != NULL)
+		free(old_head->graph.arg3);
+
+	//printf("5");
+
+	free(old_head);
 
 	// return
 	return 1;
