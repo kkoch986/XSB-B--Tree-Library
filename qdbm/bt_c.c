@@ -242,6 +242,8 @@ DllExport int call_conv bt_init(CTXTdecl)
 	}
 	villas[nextIndex].open = 1;
 
+	vlsettuning(villas[nextIndex].villa, 125, 256, 2056, 1024);
+
 	int size = vlrnum(villas[nextIndex].villa);
 	debugprintf("B+ Tree (%s) Size: %i\n", db_name, size);
 
@@ -1221,7 +1223,7 @@ DllExport int call_conv bt_trans_commit(CTXTdecl)
 
 	if(!vltrancommit(villas[handle_index].villa))
 	{
-		fprintf(stderr, "TRANSACTION Error: vltrancommit Error.\n");
+		fprintf(stderr, "TRANSACTION Error: vltrancommit Error (%s).\n", dperrmsg(dpecode));
 		return FALSE;	
 	}
 
