@@ -1,0 +1,8 @@
+PREFIX abc: <http://example.com/exampleOntology#>
+SELECT ?capital ?country
+WHERE {
+  ?x abc:cityname ?capital ;
+     abc:isCapitalOf ?y .
+  ?y abc:countryname ?country ;
+     abc:isInContinent abc:Africa .
+}

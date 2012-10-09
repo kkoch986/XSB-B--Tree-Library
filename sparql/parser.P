@@ -1,0 +1,79 @@
+:- import append/3 from basics.
+:- import scan_file/2 from scanner.
+:- auto_table.
+
+parse_file(ProgramFile,AST) :-
+    scan_file(ProgramFile,_Length),
+    test(AST, 0, _Length).
+
+test(AST) --> [iri_ref(AST)].
+
+% [1]  	Query	  ::=  	Prologue
+% ( SelectQuery | ConstructQuery | DescribeQuery | AskQuery )
+query(query(Prefixes, X)) --> prologue(Prefixes). %, select_query(X).
+
+% [2]  	Prologue	  ::=  	BaseDecl? PrefixDecl*
+% prologue(Prefixes) --> base_decl, prefix_decl(Prefixes).
+prologue(Prefixes) --> prefix_decl(Prefixes).
+
+% [3]  	BaseDecl	  ::=  	'BASE' IRI_REF
+
+% [4]  	PrefixDecl	  ::=  	'PREFIX' PNAME_NS IRI_REF
+prefix_decl(prefix(NS, IRI)) --> ['PREFIX'], pname_ns(NS), iri_ref(IRI).
+
+
+% [70]  	IRI_REF	  ::=  	'<' ([^<>"{}|^`\]-[#x00-#x20])* '>'
+% [71]  	PNAME_NS	  ::=  	PN_PREFIX? ':'
+% [72]  	PNAME_LN	  ::=  	PNAME_NS PN_LOCAL
+% [73]  	BLANK_NODE_LABEL	  ::=  	'_:' PN_LOCAL
+% [74]  	VAR1	  ::=  	'?' VARNAME
+% [75]  	VAR2	  ::=  	'$' VARNAME
+% [76]  	LANGTAG	  ::=  	'@' [a-zA-Z]+ ('-' [a-zA-Z0-9]+)*
+% [77]  	INTEGER	  ::=  	[0-9]+
+% [78]  	DECIMAL	  ::=  	[0-9]+ '.' [0-9]* | '.' [0-9]+
+% [79]  	DOUBLE	  ::=  	[0-9]+ '.' [0-9]* EXPONENT | '.' ([0-9])+ EXPONENT | ([0-9])+ EXPONENT
+% [80]  	INTEGER_POSITIVE	  ::=  	'+' INTEGER
+% [81]  	DECIMAL_POSITIVE	  ::=  	'+' DECIMAL
+% [82]  	DOUBLE_POSITIVE	  ::=  	'+' DOUBLE
+% [83]  	INTEGER_NEGATIVE	  ::=  	'-' INTEGER
+% [84]  	DECIMAL_NEGATIVE	  ::=  	'-' DECIMAL
+% [85]  	DOUBLE_NEGATIVE	  ::=  	'-' DOUBLE
+% [86]  	EXPONENT	  ::=  	[eE] [+-]? [0-9]+
+
+
+%% KEYWORDS
+keyword('BASE').
+keyword('SELECT').
+keyword('ORDER BY').
+keyword('FROM').
+keyword('GRAPH').
+keyword('STR	').
+keyword('isURI').
+keyword('PREFIX').
+keyword('CONSTRUCT').
+keyword('LIMIT').
+keyword('FROM NAMED').
+keyword('OPTIONAL').
+keyword('LANG').
+keyword('isIRI').
+keyword('DESCRIBE').
+keyword('OFFSET').
+keyword('WHERE').
+keyword('UNION').
+keyword('LANGMATCHES').
+keyword('isLITERAL').
+keyword('ASK').
+keyword('DISTINCT').
+keyword('FILTER').
+keyword('DATATYPE').
+keyword('REGEX').
+keyword('REDUCED').
+keyword('a').
+keyword('BOUND').
+keyword('true').
+keyword('sameTERM').
+keyword('false').
+
+printc() :- 'C'(_, X, _), writeln(X), fail.
+
+
