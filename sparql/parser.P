@@ -4,9 +4,9 @@
 
 parse_file(ProgramFile,AST) :-
     scan_file(ProgramFile,_Length),
-    test(AST, 0, _Length).
+    test(AST, 0, _Length). % stop with the first interpretation
 
-test(AST) --> [iri_ref(AST)].
+test(AST) --> collection(AST).
 
 % [1]  	Query	  ::=  	Prologue
 % ( SelectQuery | ConstructQuery | DescribeQuery | AskQuery )
@@ -17,29 +17,620 @@ query(query(Prefixes, X)) --> prologue(Prefixes). %, select_query(X).
 prologue(Prefixes) --> prefix_decl(Prefixes).
 
 % [3]  	BaseDecl	  ::=  	'BASE' IRI_REF
+base_decl(base(Base)) --> "B", "A", "S", "E", white_space(_), iri_ref(Base).
 
 % [4]  	PrefixDecl	  ::=  	'PREFIX' PNAME_NS IRI_REF
-prefix_decl(prefix(NS, IRI)) --> ['PREFIX'], pname_ns(NS), iri_ref(IRI).
+prefix_decl(prefix(NS, IRI)) --> "P", "R", "E", "F", "I", "X", pname_ns(NS), iri_ref(IRI).
+
+% [5]  	SelectQuery	  ::=  	'SELECT' ( 'DISTINCT' | 'REDUCED' )? ( Var+ | '*' ) DatasetClause* WhereClause SolutionModifier
+% [6]  	ConstructQuery	  ::=  	'CONSTRUCT' ConstructTemplate DatasetClause* WhereClause SolutionModifier
+% [7]  	DescribeQuery	  ::=  	'DESCRIBE' ( VarOrIRIref+ | '*' ) DatasetClause* WhereClause? SolutionModifier
+% [8]  	AskQuery	  ::=  	'ASK' DatasetClause* WhereClause
+% [9]  	DatasetClause	  ::=  	'FROM' ( DefaultGraphClause | NamedGraphClause )
+% [10]  	DefaultGraphClause	  ::=  	SourceSelector
+% [11]  	NamedGraphClause	  ::=  	'NAMED' SourceSelector
+% [12]  	SourceSelector	  ::=  	IRIref
+% [13]  	WhereClause	  ::=  	'WHERE'? GroupGraphPattern
+% [14]  	SolutionModifier	  ::=  	OrderClause? LimitOffsetClauses?
+% [15]  	LimitOffsetClauses	  ::=  	( LimitClause OffsetClause? | OffsetClause LimitClause? )
+% [16]  	OrderClause	  ::=  	'ORDER' 'BY' OrderCondition+
+% [17]  	OrderCondition	  ::=  	 ( ( 'ASC' | 'DESC' ) BrackettedExpression )
+% 					| ( Constraint | Var )
+% [18]  	LimitClause	  ::=  	'LIMIT' INTEGER
+% [19]  	OffsetClause	  ::=  	'OFFSET' INTEGER
+% [20]  	GroupGraphPattern	  ::=  	'{' TriplesBlock? ( ( GraphPatternNotTriples | Filter ) '.'? TriplesBlock? )* '}'
+% [21]  	TriplesBlock	  ::=  	TriplesSameSubject ( '.' TriplesBlock? )?
+% [22]  	GraphPatternNotTriples	  ::=  	OptionalGraphPattern | GroupOrUnionGraphPattern | GraphGraphPattern
+% [23]  	OptionalGraphPattern	  ::=  	'OPTIONAL' GroupGraphPattern
+% [24]  	GraphGraphPattern	  ::=  	'GRAPH' VarOrIRIref GroupGraphPattern
+% [25]  	GroupOrUnionGraphPattern	  ::=  	GroupGraphPattern ( 'UNION' GroupGraphPattern )*
+% [26]  	Filter	  ::=  	'FILTER' Constraint
+% [27]  	Constraint	  ::=  	BrackettedExpression | BuiltInCall | FunctionCall
+% [28]  	FunctionCall	  ::=  	IRIref ArgList
+
+% [29]  	ArgList	  ::=  	( NIL | '(' Expression ( ',' Expression )* ')' )
+arg_list([]) --> nil.
+arg_list([X|Args]) --> open_paren(), expression(X), scan_expressions(Args), close_paren().
+
+% [30]  	ConstructTemplate	  ::=  	'{' ConstructTriples? '}'
+% [31]  	ConstructTriples	  ::=  	TriplesSameSubject ( '.' ConstructTriples? )?
+% [32]  	TriplesSameSubject	  ::=  	VarOrTerm PropertyListNotEmpty |	TriplesNode PropertyList
+% [33]  	PropertyListNotEmpty	  ::=  	Verb ObjectList ( ';' ( Verb ObjectList )? )*
+property_list_not_empty(V, L) --> verb(V), object_list(L).
+
+% [34]  	PropertyList	  ::=  	PropertyListNotEmpty?
+% [35]  	ObjectList	  ::=  	Object ( ',' Object )*
 
 
+% [36]  	Object	  ::=  	GraphNode
+object(X) --> graph_node(X).
+
+% [37]  	Verb	  ::=  	VarOrIRIref | 'a'
+verb(a) --> "a".
+verb(X) --> var_or_iri_ref(X).
+
+% [38]  	TriplesNode	  ::=  	Collection |	BlankNodePropertyList
+triples_node(X) --> collection(X).
+triples_node(X) --> blank_node_property_list(X).
+
+% [39]  	BlankNodePropertyList	  ::=  	'[' PropertyListNotEmpty ']'
+blank_node_property_list(X) --> open_square_bracket, property_list_not_empty(X), close_square_bracket.
+
+% [40]  	Collection	  ::=  	'(' GraphNode+ ')'
+collection(C) --> open_paren, scan_graph_nodes(C), {C \== []}, close_paren.
+
+scan_graph_nodes([T|L]) --> graph_node(T), scan_white_space(), scan_graph_nodes(L).
+scan_graph_nodes([]) --> {true}.
+
+% [41]  	GraphNode	  ::=  	VarOrTerm |	TriplesNode
+graph_node(X) --> var_or_term(X).
+graph_node(X) --> triples_node(X).
+
+% [42]  	VarOrTerm	  ::=  	Var | GraphTerm
+var_or_term(X) --> var(X).
+var_or_term(X) --> graph_term(X).
+
+% [43]  	VarOrIRIref	  ::=  	Var | IRIref
+var_or_iri_ref(var(X)) --> var(X).
+var_or_iri_ref(iri_ref(X)) --> iri_ref(X).
+
+% [44]  	Var	  ::=  	VAR1 | VAR2
+var(V) --> var1(V).
+var(V) --> var2(V).
+
+% [45]  	GraphTerm	  ::=  	IRIref |	RDFLiteral |	NumericLiteral |	BooleanLiteral |	BlankNode |	NIL
+graph_term(T) --> iri_ref(T).
+graph_term(T) --> rdf_literal(T).
+graph_term(T) --> numeric_literal(T).
+graph_term(T) --> boolean_literal(T).
+graph_term(T) --> blank_node(T).
+graph_term(nil) --> nil().
+
+% [46]  	Expression	  ::=  	ConditionalOrExpression
+expression(E) --> conditional_or_expression(E).
+
+scan_expressions([]) --> {true}.
+scan_expressions([X|L]) --> expression(X), scan_expressions(L).
+
+% [47]  	ConditionalOrExpression	  ::=  	ConditionalAndExpression ( '||' ConditionalAndExpression )*
+conditional_or_expression(E) --> conditional_and_expression(E).
+conditional_or_expression(E) --> 
+	conditional_and_expression(E1), 
+	scan_or_expressions(E2), 
+	{ 
+		E2 = [] -> E = E1 ; E = expression_or(E1, E2) 
+	}.
+
+scan_or_expressions(E) --> 
+	"|", "|", 
+	conditional_and_expression(E1), 
+	scan_or_expressions(E2), 
+	{ 
+		E2 = [] -> E = E1 ; E = expression_or(E1, E2) 
+	}.
+scan_or_expressions(E) --> "|", "|", conditional_and_expression(E).
+scan_or_expressions([]) --> {true}.
+
+% [48]  	ConditionalAndExpression	  ::=  	ValueLogical ( '&&' ValueLogical )*
+conditional_and_expression(E) --> 
+	value_logical(E1), 
+	scan_value_logical(L), 
+	{
+		L = [] -> E = E1 ; E = expression_and(E1, L)
+	}.
+conditional_and_expression(E) --> value_logical(E1), {E = E1}.
+
+scan_value_logical(L) --> 
+	"&", "&", 
+	value_logical(L1), 
+	scan_value_logical(L2), 
+	{
+		L2 = [] -> L = L1 ; L = expression_and(L1, L2)
+	}.
+scan_value_logical(L) --> "&", "&", value_logical(L).
+scan_value_logical([]) --> {true}.
+
+% [49]  	ValueLogical	  ::=  	RelationalExpression
+value_logical(L) --> relational_expression(L).
+
+% [50]  	RelationalExpression	  ::=  	NumericExpression ( '=' NumericExpression | '!=' NumericExpression | '<' NumericExpression | '>' NumericExpression | '<=' NumericExpression | '>=' NumericExpression )?
+relational_expression(L) --> numeric_expression(L).
+relational_expression(L) --> numeric_expression(L1), "=", 		numeric_expression(L2), { L = eq(L1, L2) 	}.
+relational_expression(L) --> numeric_expression(L1), "!", "=", 	numeric_expression(L2), { L = neq(L1, L2) 	}.
+relational_expression(L) --> numeric_expression(L1), "<", 		numeric_expression(L2), { L = lt(L1, L2) 	}.
+relational_expression(L) --> numeric_expression(L1), ">", 		numeric_expression(L2), { L = gt(L1, L2) 	}.
+relational_expression(L) --> numeric_expression(L1), "<", "=", 	numeric_expression(L2), { L = lte(L1, L2) 	}.
+relational_expression(L) --> numeric_expression(L1), ">", "=", 	numeric_expression(L2), { L = gte(L1, L2) 	}.
+
+% [51]  	NumericExpression	  ::=  	AdditiveExpression
+numeric_expression(E) --> additive_expression(E).
+
+% [52]  	AdditiveExpression	  ::=  	MultiplicativeExpression ( '+' MultiplicativeExpression | '-' MultiplicativeExpression | NumericLiteralPositive | NumericLiteralNegative )*
+additive_expression(E) 				--> multiplicative_expression(E).
+additive_expression(E) 				--> multiplicative_expression(E1), "+", scan_multiplicative_expression(E2), 	{ E = plus(E1, E2) 	}.
+additive_expression(E) 				--> multiplicative_expression(E1), "-", scan_multiplicative_expression(E2), 	{ E = minus(E1, E2) }.
+
+scan_multiplicative_expression(E) --> multiplicative_expression(E).
+scan_multiplicative_expression(E) --> numeric_literal_positive(E).
+scan_multiplicative_expression(E) --> numeric_literal_negative(E).
+scan_multiplicative_expression(E) --> multiplicative_expression(E1), "+", scan_multiplicative_expression(E2), 	{ E = plus(E1, E2) }.
+scan_multiplicative_expression(E) --> multiplicative_expression(E1), "-", scan_multiplicative_expression(E2), 	{ E = minus(E1, E2) }.
+scan_multiplicative_expression(E) --> numeric_literal_positive(E1), scan_multiplicative_expression(E2), 		{ E = plus(E1, E2) }.
+scan_multiplicative_expression(E) --> numeric_literal_negative(E1), scan_multiplicative_expression(E2), 		{ E = plus(E1, E2) }.
+
+% [53]  	MultiplicativeExpression	  ::=  	UnaryExpression ( '*' UnaryExpression | '/' UnaryExpression )*
+multiplicative_expression(E) --> scan_unary_expression(E).
+
+scan_unary_expression(E) --> unary_expression(E).
+scan_unary_expression(E) --> unary_expression(E1), "*", scan_unary_expression(E2), { E = times(E1, E2) }.
+scan_unary_expression(E) --> unary_expression(E1), "/", scan_unary_expression(E2), { E = divide(E1, E2) }.
+
+% [54]  	UnaryExpression	  ::=  	  '!' PrimaryExpression 
+% 					|	'+' PrimaryExpression 
+% 					|	'-' PrimaryExpression 
+% 					|	PrimaryExpression
+unary_expression(bang(E))  	--> "!", primary_expression(E).
+unary_expression(plus(E))  	--> "+", primary_expression(E).
+unary_expression(minus(E)) 	--> "-", primary_expression(E).
+unary_expression(E) 		--> 	 primary_expression(E).
+
+% [55]  	PrimaryExpression	  ::=  	BrackettedExpression | BuiltInCall | IRIrefOrFunction | RDFLiteral | NumericLiteral | BooleanLiteral | Var
+primary_expression(X) --> bracketted_expression(X).
+primary_expression(X) --> built_in_call(X).
+primary_expression(X) --> iri_ref_or_function(X).
+primary_expression(X) --> rdf_literal(X).
+primary_expression(X) --> numeric_literal(X).
+primary_expression(X) --> boolean_literal(X).
+primary_expression(X) --> var(X).
+
+% [56]  	BrackettedExpression	  ::=  	'(' Expression ')'
+bracketted_expression((X)) --> open_paren, expression(X), close_paren.
+
+% [57]  	BuiltInCall	  ::=  	  'STR' '(' Expression ')' 
+% 					|	'LANG' '(' Expression ')' 
+% 					|	'LANGMATCHES' '(' Expression ',' Expression ')' 
+% 					|	'DATATYPE' '(' Expression ')' 
+% 					|	'BOUND' '(' Var ')' 
+% 					|	'sameTerm' '(' Expression ',' Expression ')' 
+% 					|	'isIRI' '(' Expression ')' 
+% 					|	'isURI' '(' Expression ')' 
+% 					|	'isBLANK' '(' Expression ')' 
+% 					|	'isLITERAL' '(' Expression ')' 
+% 					|	RegexExpression
+built_in_call(builtin(str, E)) --> "S", "T", "R", open_paren, expression(E), close_paren.
+built_in_call(builtin(lang,E)) --> "L", "A", "N", "G", open_paren, expression(E), close_paren.
+built_in_call(builtin(langmatches,E)) --> "L", "A", "N", "G", "M", "A", "T", "C", "H", "E", "S", open_paren, expression(E), close_paren.
+built_in_call(builtin(datatype,E)) --> "D", "A", "T", "A", "T", "Y", "P", "E", open_paren, expression(E), close_paren.
+built_in_call(builtin(bound,E)) --> "B", "O", "U", "N", "D", open_paren, expression(E), close_paren.
+built_in_call(builtin(sameterm,E)) --> "s", "a", "m", "e", "T", "e", "r", "m", open_paren, expression(E), close_paren.
+built_in_call(builtin(is_iri, E)) --> "i", "s", "I", "R", "I", open_paren, expression(E), close_paren.
+built_in_call(builtin(is_uri, E)) --> "i", "s", "U", "R", "I", open_paren, expression(E), close_paren.
+built_in_call(builtin(is_blank, E)) --> "i", "s", "B", "L", "A", "N", "K", open_paren, expression(E), close_paren.
+built_in_call(builtin(is_literall, E)) --> "i", "s", "L", "I", "T", "E", "R", "A", "L", open_paren, expression(E), close_paren.
+built_in_call(builtin(regex, E)) --> regex_expression(E).
+
+% [58]  	RegexExpression	  ::=  	'REGEX' '(' Expression ',' Expression ( ',' Expression )? ')'
+regex_expression(regex([X1, X2])) --> "R", "E", "G", "E", "X", open_paren, expression(X1), ",", expression(X2), close_paren.
+regex_expression(regex([X1, X2, X3])) --> "R", "E", "G", "E", "X", open_paren, expression(X1), ",", expression(X2), ",", expression(X3), close_paren.
+
+% [59]  	IRIrefOrFunction	  ::=  	IRIref ArgList?
+iri_ref_or_function(F) --> iri_ref(F1), arg_list(Args), { F = function(F1, Args) }.
+iri_ref_or_function(F) --> iri_ref(F1), { F = iri_ref(F1) }.
+
+% [60]  	RDFLiteral	  ::=  	String ( LANGTAG | ( '^^' IRIref ) )?
+rdf_literal(rdf_lit(String, lang(L))) --> string(String), langtag(L).
+rdf_literal(rdf_lit(String, iri_ref(L))) --> string(String), "^", "^", iri_ref(L).
+rdf_literal(rdf_lit(String, '')) --> string(String).
+
+% [61]  	NumericLiteral	  ::=  	NumericLiteralUnsigned | NumericLiteralPositive | NumericLiteralNegative
+numeric_literal(N) --> numeric_literal_unsigned(N).
+numeric_literal(N) --> numeric_literal_positive(N).
+numeric_literal(N) --> numeric_literal_negative(N).
+
+% [62]  	NumericLiteralUnsigned	  ::=  	INTEGER |	DECIMAL |	DOUBLE
+numeric_literal_unsigned(N) --> integer(L), { N = int(L) }.
+numeric_literal_unsigned(N) --> decimal(L), { N = dec(L) }.
+numeric_literal_unsigned(N) --> double(L, E), { N = doub(L,E) }.
+
+% [63]  	NumericLiteralPositive	  ::=  	INTEGER_POSITIVE |	DECIMAL_POSITIVE |	DOUBLE_POSITIVE
+numeric_literal_positive(N) --> integer_positive(L), { N = int(L) }.
+numeric_literal_positive(N) --> decimal_positive(L), { N = dec(L) }.
+numeric_literal_positive(N) --> double_positive(L,E), { N = doub(L,E) }.
+
+% [64]  	NumericLiteralNegative	  ::=  	INTEGER_NEGATIVE |	DECIMAL_NEGATIVE |	DOUBLE_NEGATIVE
+numeric_literal_negative(N) --> integer_negative(L), { N = int(L) }.
+numeric_literal_negative(N) --> decimal_negative(L), { N = dec(L) }.
+numeric_literal_negative(N) --> double_negative(L,E), { N = doub(L,E) }.
+
+% [65]  	BooleanLiteral	  ::=  	'true' |	'false'
+boolean_literal('true') --> "T", "R", "U", "E".
+boolean_literal('true') --> "t", "r", "u", "e".
+
+boolean_literal('false') --> "F", "A", "L", "S", "E".
+boolean_literal('false') --> "f", "a", "l", "s", "e".
+
+% [66]  	String	  ::=  	STRING_LITERAL1 | STRING_LITERAL2 | STRING_LITERAL_LONG1 | STRING_LITERAL_LONG2
+string(S) --> string_literal1(S).
+string(S) --> string_literal2(S).
+string(S) --> string_literal_long1(S).
+string(S) --> string_literal_long2(S).
+
+% [67]  	IRIref	  ::=  	IRI_REF |	PrefixedName
+iri_ref(Ref) --> iri_ref_terminal(Ref).
+iri_ref(Ref) --> prefixed_name(Ref).
+
+% [68]  	PrefixedName	  ::=  	PNAME_LN | PNAME_NS
+prefixed_name(ln(LN, S)) 	--> pname_ln(LN, S).
+prefixed_name(LN) 			--> pname_ns(LN).
+
+% [69]  	BlankNode	  ::=  	BLANK_NODE_LABEL |	ANON
+blank_node(blank(B))		--> blank_node_label(B).
+blank_node(blank([])) 		--> anon().
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% Terminals %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % [70]  	IRI_REF	  ::=  	'<' ([^<>"{}|^`\]-[#x00-#x20])* '>'
-% [71]  	PNAME_NS	  ::=  	PN_PREFIX? ':'
-% [72]  	PNAME_LN	  ::=  	PNAME_NS PN_LOCAL
-% [73]  	BLANK_NODE_LABEL	  ::=  	'_:' PN_LOCAL
-% [74]  	VAR1	  ::=  	'?' VARNAME
-% [75]  	VAR2	  ::=  	'$' VARNAME
-% [76]  	LANGTAG	  ::=  	'@' [a-zA-Z]+ ('-' [a-zA-Z0-9]+)*
-% [77]  	INTEGER	  ::=  	[0-9]+
-% [78]  	DECIMAL	  ::=  	[0-9]+ '.' [0-9]* | '.' [0-9]+
-% [79]  	DOUBLE	  ::=  	[0-9]+ '.' [0-9]* EXPONENT | '.' ([0-9])+ EXPONENT | ([0-9])+ EXPONENT
-% [80]  	INTEGER_POSITIVE	  ::=  	'+' INTEGER
-% [81]  	DECIMAL_POSITIVE	  ::=  	'+' DECIMAL
-% [82]  	DOUBLE_POSITIVE	  ::=  	'+' DOUBLE
-% [83]  	INTEGER_NEGATIVE	  ::=  	'-' INTEGER
-% [84]  	DECIMAL_NEGATIVE	  ::=  	'-' DECIMAL
-% [85]  	DOUBLE_NEGATIVE	  ::=  	'-' DOUBLE
-% [86]  	EXPONENT	  ::=  	[eE] [+-]? [0-9]+
+iri_ref_terminal(URL) --> "<", iri_string(URLL), { atom_codes(URL, URLL) }, ">".
 
+iri_string([]) --> {true}.
+iri_string([X|URL]) --> 
+	[X], 
+	{ 
+		X \== ">", 
+		X \== 0'", 
+		X \== "{", 
+		X \== "}",
+		X \== "`",
+		X \== 0'\\ 
+	}, 
+	iri_string(URL).
+
+% [71]  	PNAME_NS	  ::=  	PN_PREFIX? ':'
+pname_ns(V) --> pn_prefix(V), ":".
+
+% [72]  	PNAME_LN	  ::=  	PNAME_NS PN_LOCAL
+pname_ln(NS,L) --> pname_ns(NS), pn_local(L). 
+
+% [73]  	BLANK_NODE_LABEL	  ::=  	'_:' PN_LOCAL
+blank_node_label(B) --> "_", ":", pn_local(B).
+
+% [74]  	VAR1	  ::=  	'?' VARNAME
+var1(V) --> "?", varname(V).
+
+% [75]  	VAR2	  ::=  	'$' VARNAME
+var2(V) --> "$", varname(V).
+
+% [76]  	LANGTAG	  ::=  	'@' [a-zA-Z]+ ('-' [a-zA-Z0-9]+)*
+langtag(L) --> "@", scan_letters(L1), { L1 \== [] }, scan_hyphen_seq(L2), { lists:append(L1, L2, L3), atom_codes(L, L3) }.
+
+scan_letters([]) --> {true}.
+scan_letters([X|L]) --> [X], 
+	{(
+		( X @>= 0'a, X @=< 0'z ) ;
+		( X @>= 0'A, X @=< 0'Z )
+	)}, scan_letters(L).
+
+scan_hyphen_seq([]) --> {true}.
+scan_hyphen_seq(S) --> "-", scan_alphanumeric(X1), { X1 \== [] }, scan_hyphen_seq(L), { append([0'-|X1], L, S) }.
+
+scan_alphanumeric([]) --> {true}.
+scan_alphanumeric([X|A]) --> [X], 
+	{ (
+		( X @>= 0'a, X @=< 0'z ) ;
+		( X @>= 0'A, X @=< 0'Z ) ;
+		( X @>= 0'0, X @=< 0'9 ) 
+	) }, scan_alphanumeric(A).
+
+% [77]  	INTEGER	  ::=  	[0-9]+
+integer(I) --> scan_numbers(I2), { I2 \== [], number_codes(I, I2) }.
+
+% [78]  	DECIMAL	  ::=  	[0-9]+ '.' [0-9]* | '.' [0-9]+
+decimal(D) --> scan_numbers(I1), ".", scan_numbers(I2), { I2 \== [], append(I1, [0'.|I2], I3), I3 \== [], number_codes(D, I3) }.
+
+% [79]  	DOUBLE	  ::=  	[0-9]+ '.' [0-9]* EXPONENT | '.' ([0-9])+ EXPONENT | ([0-9])+ EXPONENT
+double(D,E) --> scan_numbers(I1), ".", scan_numbers(I2), exponent(E), { append(I1, [0'.|I2], I3), I3 \== [], number_codes(D, I3) }.
+
+% [80]  	INTEGER_POSITIVE	  ::=  	'+' INTEGER
+integer_positive(I) --> "+", integer(I).
+
+% [81]  	DECIMAL_POSITIVE	  ::=  	'+' DECIMAL
+decimal_positive(D) --> "+", decimal(D).
+
+% [82]  	DOUBLE_POSITIVE	  ::=  	'+' DOUBLE
+double_positive(D, E) --> "+", double(D, E).
+
+% [83]  	INTEGER_NEGATIVE	  ::=  	'-' INTEGER
+integer_negative(I) --> "-", integer(I2), { I is -1 * I2 }.
+
+% [84]  	DECIMAL_NEGATIVE	  ::=  	'-' DECIMAL
+decimal_negative(D) --> "-", decimal(D2), { D is -1 * D2 }.
+
+% [85]  	DOUBLE_NEGATIVE	  ::=  	'-' DOUBLE
+double_negative(D,E) --> "-", double(D2, E), { D is -1 * D2 }.
+
+% [86]  	EXPONENT	  ::=  	[eE] [+-]? [0-9]+
+exponent(E) --> "e", "-", scan_numbers(E2), { number_codes(E3, E2), E is -1 * E3 }.
+exponent(E) --> "e", "+", scan_numbers(E2), { number_codes(E3, E2), E = E3 }.
+exponent(E) --> "E", "-", scan_numbers(E2), { number_codes(E3, E2), E is -1 * E3 }.
+exponent(E) --> "E", "+", scan_numbers(E2), { number_codes(E3, E2), E = E3 }.
+exponent(E) --> "e", scan_numbers(E2), { number_codes(E3, E2), E = E3 }.
+exponent(E) --> "E", scan_numbers(E2), { number_codes(E3, E2), E = E3 }.
+
+scan_numbers([N|Ns]) --> [N], { check_numeric(N) }, scan_numbers(Ns), !.
+scan_numbers([]) --> { true }.
+
+check_numeric(N) :- N @>= 0'0, N @=< 0'9.
+
+% [87]  	STRING_LITERAL1	  ::=  	"'" ( ([^#x27#x5C#xA#xD]) | ECHAR )* "'"
+string_literal1(S) --> "'", 
+	(
+		scan_literal1(S1),
+		{ string:concat_atom(S1, S) }
+	), "'".
+
+scan_literal1([]) --> {true}.
+scan_literal1([C|S]) -->
+	[Cs], 
+	{
+		Cs \== 0x27, 
+		Cs \== 0x5C,			
+		Cs \== 0xA,
+		Cs \== 0xD,
+		atom_codes(C, [Cs])
+	},
+	scan_literal1(S).
+scan_literal1([C|S]) --> echar(C), scan_literal1(S).
+
+% [88]  	STRING_LITERAL2	  ::=  	'"' ( ([^#x22#x5C#xA#xD]) | ECHAR )* '"'
+string_literal2(S) --> "\"", 
+	(
+		scan_literal2(S1),
+		{ string:concat_atom(S1, S) }
+	), "\"".
+
+scan_literal2([]) --> {true}.
+scan_literal2([C|S]) -->
+	[Cs], 
+	{
+		Cs \== 0x22, 
+		Cs \== 0x5C,			
+		Cs \== 0xA,
+		Cs \== 0xD,
+		atom_codes(C, [Cs])
+	},
+	scan_literal2(S).
+scan_literal2([C|S]) --> echar(C), scan_literal2(S).
+
+% [89]  	STRING_LITERAL_LONG1	  ::=  	"'''" ( ( "'" | "''" )? ( [^'\] | ECHAR ) )* "'''"
+string_literal_long1(S) --> 
+	"'", "'", "'",
+	scan_literal_long1(S1),
+	{ string:concat_atom(S1, S) },
+	"'", "'", "'".
+
+scan_literal_long1([]) --> {true}.
+scan_literal_long1([C|S]) -->
+	(
+		"'", {C1 = ''''} ; 
+		"''", {C1 = ''''''} ; 
+		{C1 = ''}
+	),
+	[C3], { C3 \== 0'', C3 \== 0'\\ }, 
+	{ atom_codes(C2, [C3]), string:concat_atom([C1|C2], C) },
+	scan_literal_long1(S).
+
+scan_literal_long1([C|S]) -->
+	(
+		"'", {C1 = ''''} ; 
+		"''", {C1 = ''''''} ; 
+		{C1 = ''}
+	),
+	echar(C2),
+	{ string:concat_atom([C1|C2], C) },
+	scan_literal_long1(S).
+
+
+% [90]  	STRING_LITERAL_LONG2	  ::=  	'"""' ( ( '"' | '""' )? ( [^"\] | ECHAR ) )* '"""'
+string_literal_long2(S) --> 
+	"\"", "\"", "\"",
+	scan_literal_long2(S1),
+	{ string:concat_atom(S1, S) },
+	"\"", "\"", "\"".
+
+scan_literal_long2([]) --> {true}.
+scan_literal_long2([C|S]) -->
+	(
+		"\"", {C1 = '"'} ; 
+		"\"\"", {C1 = '""'} ; 
+		{C1 = ''}
+	),
+	[C3], { C3 \== 0'", C3 \== 0'\\ }, 
+	{ atom_codes(C2, [C3]), string:concat_atom([C1|C2], C) },
+	scan_literal_long2(S).
+
+scan_literal_long2([C|S]) -->
+	(
+		"\"", {C1 = '"'} ; 
+		"\"\"", {C1 = '""'} ; 
+		{C1 = ''}
+	),
+	echar(C2),
+	{ string:concat_atom([C1|C2], C) },
+	scan_literal_long2(S).
+
+% [91]  	ECHAR	  ::=  	'\' [tbnrf\"']
+echar('\t') 	-->  "\\", "t".
+echar('\b')		-->  "\\", "b".
+echar('\n')		-->  "\\", "n".
+echar('\r')		-->  "\\", "r".
+echar('\f')		-->  "\\", "f".
+echar('\\') 	-->  "\\", "\\".
+echar('\"') 	-->  "\\", [0'"].
+echar('''') 	-->  "\\", "'".
+
+
+% [92]  	NIL	  ::=  	'(' WS* ')'
+nil() --> open_paren, scan_white_space(), close_paren.
+
+% [93]  	WS	  ::=  	#x20 | #x9 | #xD | #xA
+white_space(X) --> [X], { white_space(X) }.
+white_space(0x20).
+white_space(0x9).
+white_space(0xD).
+white_space(0xA).
+
+% [94]  	ANON	  ::=  	'[' WS* ']'
+anon() --> "[", scan_white_space(), "]".
+
+scan_white_space() --> {true}.
+scan_white_space() --> white_space(_), scan_white_space().
+
+% [95]  	PN_CHARS_BASE	  ::=  	[A-Z] | [a-z] | [#x00C0-#x00D6] | [#x00D8-#x00F6] | [#x00F8-#x02FF] | 
+%%			[#x0370-#x037D] | [#x037F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | 
+%%			[#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+pn_chars_base(C) --> [X], { pn_chars_base_check_code(X), atom_codes(C, [X]) }.
+
+% pn_chars_base will read in as many successive characters that fit the bill (essentially pn_chars_base*)
+pn_chars_base_string(Chars) --> pn_chars_base_scan(C), { C \== [], atom_codes(Chars, C) }.
+pn_chars_base_scan(Atom) --> [X], 
+		{ pn_chars_base_check_code(X) }, 
+		pn_chars_base_scan(Chars), 					% try to match more characters 
+		{ Atom = [X|Chars] }.
+
+pn_chars_base_scan([]) --> {true}.
+
+pn_chars_base_check_code(C) :-	
+	(
+		( C @>= 0'A, C @=< 0'Z ); 				%% [A - Z]
+		( C @>= 0'a, C @=< 0'z ); 				%% [a - z]
+		( C @>= 0x00C0, C @=< 0x00D6 ); 		%% [#x00C0-#x00D6]
+		( C @>= 0x00D8, C @=< 0x00F6 ); 		%% [#x00D8-#x00F6] 
+		( C @>= 0x00F8, C @=< 0x02FF ); 		%% [#x00F8-#x02FF] 
+		( C @>= 0x0370, C @=< 0x037D ); 		%% [#x0370-#x037D]
+		( C @>= 0x037F, C @=< 0x1FFF ); 		%% [#x037F-#x1FFF]
+		( C @>= 0x200C, C @=< 0x200D ); 		%% [#x200C-#x200D]
+		( C @>= 0x2070, C @=< 0x218F ); 		%% [#x2070-#x218F]
+		( C @>= 0x2C00, C @=< 0x2FEF ); 		%% [#x2C00-#x2FEF]
+		( C @>= 0x3001, C @=< 0xD7FF ); 		%% [#x3001-#xD7FF]
+		( C @>= 0xF900, C @=< 0xFDCF ); 		%% [#xF900-#xFDCF]
+		( C @>= 0xFDF0, C @=< 0xFFFD ); 		%% [#xFDF0-#xFFFD] 
+		( C @>= 0x10000, C @=< 0xEFFFF ) 		%% [#x10000-#xEFFFF]
+	).
+
+
+% [96]  	PN_CHARS_U	  ::=  	PN_CHARS_BASE | '_'
+pn_chars_u(C) --> [X], { pn_chars_u_check_code(X), atom_codes(C, [X]) }.
+
+% pn_chars_u_string will read in as many successive characters that fit the bill (essentially pn_chars_u*)
+pn_chars_u_string(Chars) --> pn_chars_u_scan(C), { C \== [], atom_codes(Chars, C) }.
+
+pn_chars_u_scan([]) --> {true}.
+pn_chars_u_scan(Atom) --> [X], 
+		{ pn_chars_u_check_code(X) }, 
+		pn_chars_u_scan(Chars), 		% try to match more characters 
+		{ Atom = [X|Chars] }.
+
+%% accept all codes from pn_chars_base_check_code with the addition of the underscore
+pn_chars_u_check_code(0'_).	
+pn_chars_u_check_code(X) :- pn_chars_base_check_code(X).
+
+
+% [97]  	VARNAME	  ::=  	( PN_CHARS_U | [0-9] ) ( PN_CHARS_U | [0-9] | #x00B7 | [#x0300-#x036F] | [#x203F-#x2040] )*
+varname(V) --> 
+	% check the first characters
+	( 										% ( PN_CHARS_U | [0-9] )
+		pn_chars_u(F) ; 
+		(
+			[G], { G @>= 0'0, G @=< 0'9 , atom_codes(F, [G]) } 
+		)
+	), 			
+	varname_scan(F3),{ atom_codes(F2, F3) },% ( PN_CHARS_U | [0-9] | #x00B7 | [#x0300-#x036F] | [#x203F-#x2040] )*
+	{ string:concat_atom([F|F2], V) }.		% combine into a string
+
+varname_scan([]) --> {true}.
+varname_scan(Atom) --> [X], 
+		{ varname_check_code(X) }, 
+		varname_scan(Chars), 		% try to match more characters 
+		{ Atom = [X|Chars] }.
+
+varname_check_code(X) :- 
+			pn_chars_u_check_code(X) ;		% PN_CHARS_U
+			( X @>= 0'0, X @=< 0'9 ) ;		% [0-9]
+			X =:= 0x00B7 ;					% #x00B7
+			( X @>= 0x0300, X @=< 0x036F ); % [#x0300-#x036F]
+			( X @>= 0x203F, X @=< 0x2040 ). % [#x203F-#x2040]
+
+% [98]  	PN_CHARS	  ::=  	PN_CHARS_U | '-' | [0-9] | #x00B7 | [#x0300-#x036F] | [#x203F-#x2040]
+pn_chars(C) --> [X], { pn_chars_check_code(X), atom_codes(C, [X]) }.
+
+pn_chars_check_code(C) :-
+	varname_check_code(C) ;	
+	C =:= 0'-.
+
+% pn_chars_string will read in as many successive characters that fit the bill (essentially pn_chars*)
+pn_chars_string(Chars) --> pn_chars_scan(C), { C \== [], atom_codes(Chars, C) }.
+
+pn_chars_scan([]) --> {true}.
+pn_chars_scan(Atom) --> [X], 
+		{ pn_chars_check_code(X) }, 
+		pn_chars_scan(Chars), 			% try to match more characters 
+		{ Atom = [X|Chars] }.
+
+% [99]  	PN_PREFIX	  ::=  	PN_CHARS_BASE ((PN_CHARS|'.')* PN_CHARS)?
+pn_prefix(Prefix) --> 
+	pn_chars_base(C1),  					% PN_CHARS_BASE
+	(
+		(									% ((PN_CHARS|'.')* PN_CHARS)?
+			pn_prefix_scan(C3),
+			pn_chars(C4),
+			{ lists:append(C3, [C4], C2) }
+		) ; 
+		{ C2 = [] }
+	), { string:concat_atom([C1|C2], Prefix) }.
+
+pn_prefix_scan([]) 		--> {true}.
+pn_prefix_scan([C1|C]) 	--> pn_chars(C1), pn_prefix_scan(C). % PN_CHARS
+pn_prefix_scan(['.'|C]) --> ".", pn_prefix_scan(C). 		% .
+
+% [100]  	PN_LOCAL	  ::=  	( PN_CHARS_U | [0-9] ) ((PN_CHARS|'.')* PN_CHARS)?
+pn_local(V) --> 
+	( pn_chars_u(C1) ; [C1a], { C1a @>=0'0, C1a @=< 0'9, atom_codes(C1, [C1a]) } ),  % ( PN_CHARS_U | [0-9] )
+	(
+		(									% ((PN_CHARS|'.')* PN_CHARS)?
+			pn_prefix_scan(C3),
+			pn_chars(C4),
+			{ lists:append(C3, [C4], C2) }
+		) ; 
+		{ C2 = [] }
+	), { string:concat_atom([C1|C2], V) }.
+
+%% allow spaces inbetween parenthesis
+open_paren() --> "(", scan_white_space().
+close_paren() --> scan_white_space(), ")".
+
+open_square_bracket() --> "[", scan_white_space().
+close_square_bracket() --> scan_white_space(), "]".
 
 %% KEYWORDS
 keyword('BASE').
@@ -75,5 +666,5 @@ keyword('sameTERM').
 keyword('false').
 
 printc() :- 'C'(_, X, _), writeln(X), fail.
-
+test :- parse_file(test, X), writeln(X).
 

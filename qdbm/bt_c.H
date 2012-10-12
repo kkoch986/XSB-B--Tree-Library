@@ -33,3 +33,6 @@
 
 % repairing 
 % :- export bt_repair/2.
+
+% meta data
+:- export bt_get_predname/2, bt_get_arity/2, bt_get_indexon/2.

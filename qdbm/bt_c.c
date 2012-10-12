@@ -254,6 +254,84 @@ DllExport int call_conv bt_init(CTXTdecl)
 	return TRUE;
 }
 
+/** bt_get_predname/2 returns the predicate name used to store the data in the b+ tree. **/
+DllExport int call_conv bt_get_predname(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+
+	if(handle_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable handle = villas[handle_index];
+
+	extern_ctop_string(CTXTdecl 2, handle.predname);
+
+	return TRUE;
+}
+
+/** bt_get_arity/2 returns the predicate arity stored in the b+ tree. **/
+DllExport int call_conv bt_get_arity(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+
+	if(handle_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable handle = villas[handle_index];
+
+	ctop_int(CTXTdecl 2, handle.arity);
+
+	return TRUE;
+}
+
+/** bt_get_indexon/2 returns the predicate argument number used for indexing in the b+ tree. **/
+DllExport int call_conv bt_get_indexon(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+
+	if(handle_index >= nextIndex)
+	{
+		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	struct IndexTable handle = villas[handle_index];
+
+	ctop_int(CTXTdecl 2, handle.argnum);
+
+	return TRUE;
+}
+
 /**
  * bt_insert/2.
  * Inserts the given term into the B+ Tree given by the second argument.
@@ -460,6 +538,12 @@ DllExport int call_conv bt_get(CTXTdecl)
 
 	struct IndexTable tree = villas[tree_index];
 
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
+		return FALSE;
+	}
+
 	// the second argument is the key
 	prolog_term key = reg_term(CTXTdecl 3);
 	char *buff = canonical_term(CTXTdecl key, 1);
@@ -506,6 +590,12 @@ DllExport int call_conv bt_getl(CTXTdecl)
 
 	struct IndexTable tree = villas[tree_index];
 
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
+		return FALSE;
+	}
+
 	// the second argument is the key
 	prolog_term key = reg_term(CTXTdecl 2);
 	char *buff = canonical_term(CTXTdecl key, 1);
@@ -538,6 +628,12 @@ DllExport int call_conv bt_getnext(CTXTdecl)
 	if(tree_index >= nextIndex)
 	{
 		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
 		return FALSE;
 	}
 
@@ -585,6 +681,12 @@ DllExport int call_conv bt_prefix_jump(CTXTdecl)
 	if(tree_index >= nextIndex)
 	{
 		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
 		return FALSE;
 	}
 
@@ -642,6 +744,12 @@ DllExport int call_conv bt_prefix_next(CTXTdecl)
 	}
 
 	struct IndexTable tree = villas[tree_index];
+
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
+		return FALSE;
+	}
 
 	// verify the tree is in prefix mode
 	if(tree.cursorMode != PREFIX_MODE)
@@ -705,6 +813,12 @@ DllExport int call_conv bt_range_init(CTXTdecl)
 		return FALSE;
 	}
 
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
+		return FALSE;
+	}
+
 	// make sure to free up any old search keys
 	if(villas[tree_index].cursorMode == PREFIX_MODE)
 	{
@@ -765,6 +879,12 @@ DllExport int call_conv bt_range_next(CTXTdecl)
 	if(tree_index >= nextIndex)
 	{
 		fprintf(stderr, "RANGE Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
 		return FALSE;
 	}
 
@@ -836,6 +956,12 @@ DllExport int call_conv bt_mcm_init(CTXTdecl)
 		return FALSE;
 	}
 
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
+		return FALSE;
+	}
+
 	// make sure to free up any old search keys
 	if(villas[tree_index].cursorMode == PREFIX_MODE)
 	{
@@ -883,6 +1009,12 @@ int mcm_cur_ops(CTXTdecl int operation)
 	if(tree_index >= nextIndex)
 	{
 		fprintf(stderr, "MCM FIRST Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(villas[tree_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
 		return FALSE;
 	}
 
@@ -1141,6 +1273,12 @@ DllExport int call_conv bt_size(CTXTdecl)
 		return FALSE;
 	}
 
+	if(villas[handle_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
+		return FALSE;
+	}
+
 	int lsize = vlrnum(villas[handle_index].villa);
 
 	ctop_int(CTXTdecl 2, lsize);
@@ -1168,6 +1306,12 @@ DllExport int call_conv bt_tree_name(CTXTdecl)
 		return FALSE;
 	}
 
+	if(villas[handle_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
+		return FALSE;
+	}
+
 	extern_ctop_string(CTXTdecl 2, villas[handle_index].dbname);
 	
 	return TRUE;
@@ -1191,6 +1335,12 @@ DllExport int call_conv bt_trans_start(CTXTdecl)
 	if(handle_index >= nextIndex)
 	{
 		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(villas[handle_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
 		return FALSE;
 	}
 
@@ -1221,6 +1371,12 @@ DllExport int call_conv bt_trans_commit(CTXTdecl)
 		return FALSE;
 	}
 
+	if(villas[handle_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
+		return FALSE;
+	}
+
 	if(!vltrancommit(villas[handle_index].villa))
 	{
 		fprintf(stderr, "TRANSACTION Error: vltrancommit Error (%s).\n", dperrmsg(dpecode));
@@ -1245,6 +1401,12 @@ DllExport int call_conv bt_trans_abort(CTXTdecl)
 	if(handle_index >= nextIndex)
 	{
 		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
+		return FALSE;
+	}
+
+	if(villas[handle_index].open == FALSE)
+	{
+		fprintf(stderr, "Error: Handle has been closed.\n");
 		return FALSE;
 	}
 

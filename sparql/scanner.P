@@ -19,19 +19,6 @@ scan_file(Filename,Length) :-
 		writeln('Did you forget to put single quotes around the filename?')
 	).
 
-scan_file(Filename,Length) :-
-	(atom(Filename)
-	 ->	expand_filename(Filename,Afile),
-		seeing(Ofile),
-		see(Afile),
-		file_to_string(String,[]),
-		seen,
-		see(Ofile),
-		set_string(String,Length)
-	 ;	writeln('Error in file name.'),
-		writeln('Did you forget to put single quotes around the filename?')
-	).
-
 file_to_string(Li,Lo) :-
 	get0(C),
 	(C < 0	% end-of-file
@@ -42,9 +29,10 @@ file_to_string(Li,Lo) :-
 
 set_string(String,Length) :-
 	abolish_all_tables,
-	set_scan_pars([no_whitespace]),
-	scan(String,Words),
-	tphrase_set_string(Words),
+	%set_scan_pars([whitespace, no_case_in_lit, no_case]),
+	%scan(String,Words),
+	%tphrase_set_string(Words),
+	tphrase_set_string(String),
 	tphrase_string_length(Length).
 
 

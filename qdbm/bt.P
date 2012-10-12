@@ -26,6 +26,7 @@
 %:- import bt_cur_enc_repair_fone/1 from bt_c.
 %:- import bt_repair/2 from bt_c.
 %:- import bt_export/2, bt_import/2 from bt_c.
+:- import bt_get_predname/2, bt_get_arity/2, bt_get_indexon/2 from bt_c.
 
 :- import numbervars/3, unnumbervars/3 from num_vars.
 
@@ -37,6 +38,7 @@
 :- export btminit/1, btmfirst/1, btmlast/1, btmnext/1, btmprev/1, 
 			btmjump/2, btmjump_rev/2, btmkey/2, btmval/2, btmout/1.
 :- export btstrans/1, btctrans/1, btatrans/1.
+:- export btpredname/2, btarity/2, btindexon/2.
 
 % this function CREATES a new directory structure for the provided predicate and creates 
 % b+ tree and meta database inside it.
@@ -249,6 +251,11 @@ btctrans(Handle) :- bt_trans_commit(Handle).
 
 %% btatrans/1. Aborts a transaction on the given database.
 btatrans(Handle) :- bt_trans_abort(Handle).
+
+% return some meta data about the btree.
+btpredname(Handle, PredName) 	:- bt_get_predname(Handle, PredName0), PredName = PredName0.
+btarity(Handle, Arity) 			:- bt_get_arity(Handle, Arity0), Arity = Arity0.
+btindexon(Handle, Indexon) 		:- bt_get_indexon(Handle, Indexon0), Indexon = Indexon0.
 
 %% Backup and Restoring DBs (via btexport/2 and btimport/2).
 %% btexport/2. Exports the data from the btree into an ordering
