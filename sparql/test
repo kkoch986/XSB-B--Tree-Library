@@ -1,1 +1,1 @@
-( 10 50 true ?x )
+{ ?x foaf:name ?name . }

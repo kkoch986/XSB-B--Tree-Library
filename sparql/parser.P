@@ -6,7 +6,7 @@ parse_file(ProgramFile,AST) :-
     scan_file(ProgramFile,_Length),
     test(AST, 0, _Length). % stop with the first interpretation
 
-test(AST) --> collection(AST).
+test(AST) --> group_graph_pattern(AST).
 
 % [1]  	Query	  ::=  	Prologue
 % ( SelectQuery | ConstructQuery | DescribeQuery | AskQuery )
@@ -22,11 +22,11 @@ base_decl(base(Base)) --> "B", "A", "S", "E", white_space(_), iri_ref(Base).
 % [4]  	PrefixDecl	  ::=  	'PREFIX' PNAME_NS IRI_REF
 prefix_decl(prefix(NS, IRI)) --> "P", "R", "E", "F", "I", "X", pname_ns(NS), iri_ref(IRI).
 
-% [5]  	SelectQuery	  ::=  	'SELECT' ( 'DISTINCT' | 'REDUCED' )? ( Var+ | '*' ) DatasetClause* WhereClause SolutionModifier
-% [6]  	ConstructQuery	  ::=  	'CONSTRUCT' ConstructTemplate DatasetClause* WhereClause SolutionModifier
-% [7]  	DescribeQuery	  ::=  	'DESCRIBE' ( VarOrIRIref+ | '*' ) DatasetClause* WhereClause? SolutionModifier
-% [8]  	AskQuery	  ::=  	'ASK' DatasetClause* WhereClause
-% [9]  	DatasetClause	  ::=  	'FROM' ( DefaultGraphClause | NamedGraphClause )
+% [5]  		SelectQuery	  ::=  	'SELECT' ( 'DISTINCT' | 'REDUCED' )? ( Var+ | '*' ) DatasetClause* WhereClause SolutionModifier
+% [6]  		ConstructQuery	  ::=  	'CONSTRUCT' ConstructTemplate DatasetClause* WhereClause SolutionModifier
+% [7]  		DescribeQuery	  ::=  	'DESCRIBE' ( VarOrIRIref+ | '*' ) DatasetClause* WhereClause? SolutionModifier
+% [8]  		AskQuery	  ::=  	'ASK' DatasetClause* WhereClause
+% [9]  		DatasetClause	  ::=  	'FROM' ( DefaultGraphClause | NamedGraphClause )
 % [10]  	DefaultGraphClause	  ::=  	SourceSelector
 % [11]  	NamedGraphClause	  ::=  	'NAMED' SourceSelector
 % [12]  	SourceSelector	  ::=  	IRIref
@@ -39,28 +39,76 @@ prefix_decl(prefix(NS, IRI)) --> "P", "R", "E", "F", "I", "X", pname_ns(NS), iri
 % [18]  	LimitClause	  ::=  	'LIMIT' INTEGER
 % [19]  	OffsetClause	  ::=  	'OFFSET' INTEGER
 % [20]  	GroupGraphPattern	  ::=  	'{' TriplesBlock? ( ( GraphPatternNotTriples | Filter ) '.'? TriplesBlock? )* '}'
+group_graph_pattern([B2|P]) --> open_curly, triples_block(B), scan_graph_pattern(P2), close_curly.
+group_graph_pattern([B2|P]) --> open_curly, scan_graph_pattern(P2), close_curly.
+
+scan_graph_pattern([]) --> {true}.
+scan_graph_pattern([P|L]) --> scan_white_space, ( graph_pattern_not_triples(P) ; filter(P)), ( dot ; true ), triples_block(B), scan_graph_pattern(L).
+
 % [21]  	TriplesBlock	  ::=  	TriplesSameSubject ( '.' TriplesBlock? )?
+triples_block(block([B])) --> triples_same_subject(B).
+triples_block(block([B])) --> triples_same_subject(B), dot.
+triples_block(block([B1|B2])) --> triples_same_subject(B1), dot, triples_block(B2).
+
 % [22]  	GraphPatternNotTriples	  ::=  	OptionalGraphPattern | GroupOrUnionGraphPattern | GraphGraphPattern
+graph_pattern_not_triples(P) --> optional_graph_pattern(P).
+graph_pattern_not_triples(P) --> group_or_union_graph_pattern(P).
+graph_pattern_not_triples(P) --> graph_graph_pattern(P).
+
 % [23]  	OptionalGraphPattern	  ::=  	'OPTIONAL' GroupGraphPattern
+optional_graph_pattern(P) --> "O", "P", "T", "I", "O", "N", "A", "L", scan_white_space, group_graph_pattern(P).
+
 % [24]  	GraphGraphPattern	  ::=  	'GRAPH' VarOrIRIref GroupGraphPattern
+graph_graph_pattern(graph(P,C)) --> "G", "R", "A", "P", "H", scan_white_space, var_or_iri_ref(V), scan_white_space, group_graph_pattern(C).
+
 % [25]  	GroupOrUnionGraphPattern	  ::=  	GroupGraphPattern ( 'UNION' GroupGraphPattern )*
+group_or_union_graph_pattern(union([P|L])) --> group_graph_pattern(P), scan_unions(L).
+
+scan_unions([]) --> {true}.
+scan_unions([P|L]) --> scan_white_space, "U", "N", "I", "O", "N", scan_white_space, group_graph_pattern(P), scan_unions(L).
+
 % [26]  	Filter	  ::=  	'FILTER' Constraint
+filter(C) --> "F", "I", "L", "T", "E", "R", scan_white_space, constraint(C).
+
 % [27]  	Constraint	  ::=  	BrackettedExpression | BuiltInCall | FunctionCall
+constraint(C) --> bracketted_expression(C).
+constraint(C) --> built_in_call(C).
+constraint(C) --> function_call(C).
+
 % [28]  	FunctionCall	  ::=  	IRIref ArgList
+function_call(call([F|L])) --> iri_ref(H), arg_list(L).
 
 % [29]  	ArgList	  ::=  	( NIL | '(' Expression ( ',' Expression )* ')' )
 arg_list([]) --> nil.
 arg_list([X|Args]) --> open_paren(), expression(X), scan_expressions(Args), close_paren().
 
 % [30]  	ConstructTemplate	  ::=  	'{' ConstructTriples? '}'
+construct_template([]) --> open_curly, close_curly.
+construct_template(L) --> open_curly, construct_triples, close_curly.
+
 % [31]  	ConstructTriples	  ::=  	TriplesSameSubject ( '.' ConstructTriples? )?
+construct_triples([T|L]) --> triples_same_subject(T), ".", construct_triples(L).
+construct_triples([T]) --> triples_same_subject(T), ".".
+construct_triples([T]) --> triples_same_subject(T).
+
 % [32]  	TriplesSameSubject	  ::=  	VarOrTerm PropertyListNotEmpty |	TriplesNode PropertyList
+triples_same_subject((V,P)) --> var_or_term(V), scan_white_space, property_list_not_empty(P).
+triples_same_subject((V,P)) --> triples_node(V), scan_white_space, property_list(P).
+
 % [33]  	PropertyListNotEmpty	  ::=  	Verb ObjectList ( ';' ( Verb ObjectList )? )*
-property_list_not_empty(V, L) --> verb(V), object_list(L).
+property_list_not_empty([(V, L)|List]) --> verb(V), scan_white_space, object_list(L), scan_property_list(List).
+property_list_not_empty([V, L]) --> verb(V), scan_white_space, object_list(L).
+
+scan_property_list([(V,O)|L]) --> semicolon, verb(V), scan_white_space, object_list(O), scan_white_space, scan_property_list(L).
+scan_property_list([]) --> {true}.
 
 % [34]  	PropertyList	  ::=  	PropertyListNotEmpty?
-% [35]  	ObjectList	  ::=  	Object ( ',' Object )*
+property_list([]) --> {true}.
+property_list(L) --> property_list_not_empty(L).
 
+% [35]  	ObjectList	  ::=  	Object ( ',' Object )*
+object_list([O|L]) --> object(O), comma, object_list(L).
+object_list([O]) --> object(O).
 
 % [36]  	Object	  ::=  	GraphNode
 object(X) --> graph_node(X).
@@ -87,7 +135,7 @@ graph_node(X) --> var_or_term(X).
 graph_node(X) --> triples_node(X).
 
 % [42]  	VarOrTerm	  ::=  	Var | GraphTerm
-var_or_term(X) --> var(X).
+var_or_term(var(X)) --> var(X).
 var_or_term(X) --> graph_term(X).
 
 % [43]  	VarOrIRIref	  ::=  	Var | IRIref
@@ -230,8 +278,8 @@ built_in_call(builtin(is_literall, E)) --> "i", "s", "L", "I", "T", "E", "R", "A
 built_in_call(builtin(regex, E)) --> regex_expression(E).
 
 % [58]  	RegexExpression	  ::=  	'REGEX' '(' Expression ',' Expression ( ',' Expression )? ')'
-regex_expression(regex([X1, X2])) --> "R", "E", "G", "E", "X", open_paren, expression(X1), ",", expression(X2), close_paren.
-regex_expression(regex([X1, X2, X3])) --> "R", "E", "G", "E", "X", open_paren, expression(X1), ",", expression(X2), ",", expression(X3), close_paren.
+regex_expression(regex([X1, X2])) --> "R", "E", "G", "E", "X", open_paren, expression(X1), comma, expression(X2), close_paren.
+regex_expression(regex([X1, X2, X3])) --> "R", "E", "G", "E", "X", open_paren, expression(X1), comma, expression(X2), comma, expression(X3), close_paren.
 
 % [59]  	IRIrefOrFunction	  ::=  	IRIref ArgList?
 iri_ref_or_function(F) --> iri_ref(F1), arg_list(Args), { F = function(F1, Args) }.
@@ -632,38 +680,12 @@ close_paren() --> scan_white_space(), ")".
 open_square_bracket() --> "[", scan_white_space().
 close_square_bracket() --> scan_white_space(), "]".
 
-%% KEYWORDS
-keyword('BASE').
-keyword('SELECT').
-keyword('ORDER BY').
-keyword('FROM').
-keyword('GRAPH').
-keyword('STR	').
-keyword('isURI').
-keyword('PREFIX').
-keyword('CONSTRUCT').
-keyword('LIMIT').
-keyword('FROM NAMED').
-keyword('OPTIONAL').
-keyword('LANG').
-keyword('isIRI').
-keyword('DESCRIBE').
-keyword('OFFSET').
-keyword('WHERE').
-keyword('UNION').
-keyword('LANGMATCHES').
-keyword('isLITERAL').
-keyword('ASK').
-keyword('DISTINCT').
-keyword('FILTER').
-keyword('DATATYPE').
-keyword('REGEX').
-keyword('REDUCED').
-keyword('a').
-keyword('BOUND').
-keyword('true').
-keyword('sameTERM').
-keyword('false').
+open_curly() --> "{", scan_white_space.
+close_curly() --> scan_white_space, "}".
+
+dot() --> scan_white_space, ".", scan_white_space.
+comma() --> scan_white_space, ",", scan_white_space.
+semicolon() --> scan_white_space, ";", scan_white_space.
 
 printc() :- 'C'(_, X, _), writeln(X), fail.
 test :- parse_file(test, X), writeln(X).
