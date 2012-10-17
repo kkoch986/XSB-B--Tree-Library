@@ -1,0 +1,51 @@
+
+:- import wrap/2 from wrapping. 
+:- import platform/1 from shell.
+:- import misc_error/1 from error_handler.
+
+clean():- 
+	shell('rm -f *dylib *.xwam *.o *.so xsb_wrap_*.c').
+
+make:- 
+	platform(Platform),
+	(Platform == darwin -> make_darwin 
+	 ; Platform == 'linux-gnu' -> make_linux
+            ; misc_error(['Unknown platform: ',Platform,
+	                   ' -- don''t know how to make -- see xasp/prologMake.P']) ).
+
+make_darwin() :- 
+	writeln('darwin'),
+	shell('rm -f *dylib *.o'),
+	xsb_configuration(packagesdir,PkgPath),
+	xsb_configuration(config_dir,ConfPath),
+	xsb_configuration(emudir,EmuPath),
+	% 1) compile bt_cp.c
+	shell(['g++ -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -c -o bt_cp.o bt_cp.c -lkyotocabinet']),
+	% 1) compile xsb_wrap_xasppkg
+	shell(['gcc -I',ConfPath,' -I',EmuPath,' -I',PkgPath,'/xasp/smodels -c xsb_wrap_xasppkg.c']),
+	% 3) make dylib
+	shell(['g++ -I',ConfPath,' -I',EmuPath,' -I',PkgPath,'/xasp/smodels -lm ',
+   	       '-dynamiclib -undefined dynamic_lookup -single_module -nostartfiles ',
+ 	       '-o xasppkg.dylib xasppkg.o xsb_wrap_xasppkg.o ',
+	       PkgPath,'/xasp/smodels/.libs/libsmodels.a']).
+
+make_linux() :-
+	writeln('linux'), 
+	clean,
+	xsb_configuration(packagesdir,PkgPath),
+	xsb_configuration(config_dir,ConfPath),
+	xsb_configuration(emudir,EmuPath),
+	% 1) compile bt_c.cpp
+	shell(['g++ -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -L. -L.. -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -c -o bt_c.o bt_c.cpp ']),
+	% 2) make wrapper
+	wrap('bt_c.H','xsb_wrap_bt_c.c'),
+	% 3) compile wrapper
+	shell(['gcc -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -fPIC -c xsb_wrap_bt_c.c  -o xsb_wrap_bt_c.o -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc']),
+	% 3) make so
+	shell(['g++ -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc ',
+   	       '-shared ',
+ 	       '-o bt_c.so xsb_wrap_bt_c.o ']).
+
+
+
+?- clean, make, [bt_c].
