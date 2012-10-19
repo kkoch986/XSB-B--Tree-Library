@@ -9,17 +9,22 @@
 #include "/home/ken/XSB/emu/cinterf.h"
 #include "/home/ken/XSB/emu/context.h"
 
-/* New Definition: test from void btest(). */
-void btest();
+/* New Definition: test(retval:output) from int btest(). */
+prolog_int btest();
 DllExport prolog_int call_conv test(CTXTdecl)
 {
-   xsb_query_save(CTXTc 0);
-   btest();
+   prolog_term retvalOut;
+   prolog_int retval;
+   retvalOut = extern_reg_term(1);
+   if(!is_var(retvalOut)) return FALSE;
+   xsb_query_save(CTXTc 1);
+   retval =   btest();
    if (xsb_query_restore(CTXT)) {  // restore regs to prepare for exit
       printf("Error finishing up btest.\n");
       fflush(stdout);
       return FALSE;
    }
+   extern_c2p_int(retval,retvalOut);
    return TRUE;
 }
 

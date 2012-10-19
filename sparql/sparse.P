@@ -1,5 +1,6 @@
 :- import append/3 from basics.
 :- import scan_file/2 from scanner.
+:- export parse_file/2, test/0.
 :- auto_table.
 
 parse_file(ProgramFile,AST) :-
@@ -72,7 +73,7 @@ construct_query(construct(T, Clauses, Where, SolutionModifier)) -->
 describe_query(describe(Vars, DatasetClauses, WhereClause, SolutionModifier)) --> 
 	"D", "E", "S", "C", "R", "I", "B", "E", 
 	scan_white_space, 
-	( scan_var_or_iriref(Vars), Vars \== [] ; ("*", {Vars = "*"}) ), scan_white_space,
+	( scan_var_or_iriref(Vars), { Vars \== [] } ; ("*", {Vars = "*"}) ), scan_white_space,
 	scan_dataset_clauses(DatasetClauses), scan_white_space,
 	( where_clause(WhereClause) ; {WhereClause = []} ), scan_white_space,
 	solution_modifier(SolutionModifier), scan_white_space.
@@ -104,11 +105,11 @@ where_clause(C) --> scan_white_space, "W", "H", "E", "R", "E", scan_white_space,
 where_clause(C) --> scan_white_space, group_graph_pattern(C), scan_white_space.
 
 % [14]  	SolutionModifier	  ::=  	OrderClause? LimitOffsetClauses?
-solution_modifier(modifier([M|L])) --> ( order_clause(M) ; {M = []} ), scan_white_space, ( limit_offset_clauses(L) ; {L = []} ).
+solution_modifier(modifier([M|L])) --> ( order_clause(M) ; { M = [] } ), scan_white_space, ( limit_offset_clauses(L) ; { L = [] } ).
 
 % [15]  	LimitOffsetClauses	  ::=  	( LimitClause OffsetClause? | OffsetClause LimitClause? )
-limit_offset_clauses([L|O]) --> limit_clause(L), scan_white_space, ( offset_clause(O) ; O = []).
-limit_offset_clauses([O|L]) --> offset_clause(O), scan_white_space, ( limit_clause(L) ; L = []).
+limit_offset_clauses([L|O]) --> limit_clause(L), scan_white_space, ( offset_clause(O) ; {O = []}).
+limit_offset_clauses([O|L]) --> offset_clause(O), scan_white_space, ( limit_clause(L) ; {L = []}).
 
 % [16]  	OrderClause	  ::=  	'ORDER' 'BY' OrderCondition+
 order_clause([C | L]) --> "O", "R", "D", "E", "R", scan_white_space, "B", "Y", scan_white_space, order_condition(C), scan_order_conditions(L).
@@ -131,7 +132,7 @@ offset_clause(offset(C)) --> "O", "F", "F", "S", "E", "T", scan_white_space, int
 
 % [20]  	GroupGraphPattern	  ::=  	'{' TriplesBlock? ( ( GraphPatternNotTriples | Filter ) '.'? TriplesBlock? )* '}'
 group_graph_pattern([B|P]) --> open_curly, triples_block(B), scan_graph_pattern(P), close_curly.
-group_graph_pattern([B|P]) --> open_curly, scan_graph_pattern(P), close_curly.
+group_graph_pattern([P]) --> open_curly, scan_graph_pattern(P), close_curly.
 
 % ( GraphPatternNotTriples | Filter ) '.'? TriplesBlock? )
 scan_graph_pattern([]) --> scan_white_space, {true}, scan_white_space.
@@ -143,8 +144,8 @@ triples_block(block([B])) --> scan_white_space, triples_same_subject(B), dot.
 triples_block(block([B1|B2])) --> scan_white_space, triples_same_subject(B1), dot, scan_triples_block(B2), scan_white_space.
 
 scan_triples_block([]) --> {true}.
-scan_triples_block([B|L]) --> scan_white_space, triples_same_subject(B), scan_white_space.
-scan_triples_block([B|L]) --> scan_white_space, triples_same_subject(B), dot.
+scan_triples_block([B]) --> scan_white_space, triples_same_subject(B), scan_white_space.
+scan_triples_block([B]) --> scan_white_space, triples_same_subject(B), dot.
 scan_triples_block([B|L]) --> scan_white_space, triples_same_subject(B), dot, scan_triples_block(L), scan_white_space.
 
 
@@ -157,7 +158,7 @@ graph_pattern_not_triples(P) --> graph_graph_pattern(P).
 optional_graph_pattern(P) --> scan_white_space, "O", "P", "T", "I", "O", "N", "A", "L", scan_white_space, group_graph_pattern(P), scan_white_space.
 
 % [24]  	GraphGraphPattern	  ::=  	'GRAPH' VarOrIRIref GroupGraphPattern
-graph_graph_pattern(graph(P,C)) --> scan_white_space, "G", "R", "A", "P", "H", scan_white_space, var_or_iri_ref(V), scan_white_space, group_graph_pattern(C).
+graph_graph_pattern(graph(P,C)) --> scan_white_space, "G", "R", "A", "P", "H", scan_white_space, var_or_iri_ref(P), scan_white_space, group_graph_pattern(C).
 
 % [25]  	GroupOrUnionGraphPattern	  ::=  	GroupGraphPattern ( 'UNION' GroupGraphPattern )*
 group_or_union_graph_pattern(union([P|L])) --> group_graph_pattern(P), scan_white_space, scan_unions(L).
@@ -174,7 +175,7 @@ constraint(C) --> built_in_call(C).
 constraint(C) --> function_call(C).
 
 % [28]  	FunctionCall	  ::=  	IRIref ArgList
-function_call(call([F|L])) --> iri_ref(H), arg_list(L).
+function_call(call([F|L])) --> iri_ref(F), arg_list(L).
 
 % [29]  	ArgList	  ::=  	( NIL | '(' Expression ( ',' Expression )* ')' )
 arg_list([]) --> nil.
@@ -182,7 +183,7 @@ arg_list([X|Args]) --> open_paren(), expression(X), scan_expressions(Args), clos
 
 % [30]  	ConstructTemplate	  ::=  	'{' ConstructTriples? '}'
 construct_template([]) --> open_curly, close_curly.
-construct_template(L) --> open_curly, construct_triples, close_curly.
+construct_template(L) --> open_curly, construct_triples(L), close_curly.
 
 % [31]  	ConstructTriples	  ::=  	TriplesSameSubject ( '.' ConstructTriples? )?
 construct_triples([T|L]) --> triples_same_subject(T), ".", construct_triples(L).
@@ -268,7 +269,7 @@ conditional_or_expression(E) -->
 	}.
 
 scan_or_expressions(E) --> 
-	"|", "|", 
+	scan_white_space, "|", "|", scan_white_space,
 	conditional_and_expression(E1), 
 	scan_or_expressions(E2), 
 	{ 
@@ -300,13 +301,13 @@ scan_value_logical([]) --> {true}.
 value_logical(L) --> relational_expression(L).
 
 % [50]  	RelationalExpression	  ::=  	NumericExpression ( '=' NumericExpression | '!=' NumericExpression | '<' NumericExpression | '>' NumericExpression | '<=' NumericExpression | '>=' NumericExpression )?
-relational_expression(L) --> numeric_expression(L).
-relational_expression(L) --> numeric_expression(L1), "=", 		numeric_expression(L2), { L = eq(L1, L2) 	}.
-relational_expression(L) --> numeric_expression(L1), "!", "=", 	numeric_expression(L2), { L = neq(L1, L2) 	}.
-relational_expression(L) --> numeric_expression(L1), "<", 		numeric_expression(L2), { L = lt(L1, L2) 	}.
-relational_expression(L) --> numeric_expression(L1), ">", 		numeric_expression(L2), { L = gt(L1, L2) 	}.
-relational_expression(L) --> numeric_expression(L1), "<", "=", 	numeric_expression(L2), { L = lte(L1, L2) 	}.
-relational_expression(L) --> numeric_expression(L1), ">", "=", 	numeric_expression(L2), { L = gte(L1, L2) 	}.
+relational_expression(L) --> scan_white_space, numeric_expression(L).
+relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, "=", 		scan_white_space, numeric_expression(L2), { L = eq(L1, L2) 		}.
+relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, "!", "=", 	scan_white_space, numeric_expression(L2), { L = neq(L1, L2) 	}.
+relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, "<", 		scan_white_space, numeric_expression(L2), { L = lt(L1, L2) 		}.
+relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, ">", 		scan_white_space, numeric_expression(L2), { L = gt(L1, L2) 		}.
+relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, "<", "=", 	scan_white_space, numeric_expression(L2), { L = lte(L1, L2) 	}.
+relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, ">", "=", 	scan_white_space, numeric_expression(L2), { L = gte(L1, L2) 	}.
 
 % [51]  	NumericExpression	  ::=  	AdditiveExpression
 numeric_expression(E) --> additive_expression(E).
@@ -350,7 +351,7 @@ primary_expression(X) --> boolean_literal(X).
 primary_expression(X) --> var(X).
 
 % [56]  	BrackettedExpression	  ::=  	'(' Expression ')'
-bracketted_expression(br(X)) --> open_paren, expression(X), close_paren.
+bracketted_expression((X)) --> open_paren, expression(X), close_paren.
 
 % [57]  	BuiltInCall	  ::=  	  'STR' '(' Expression ')' 
 % 					|	'LANG' '(' Expression ')' 
@@ -786,5 +787,5 @@ comma() --> scan_white_space, ",", scan_white_space.
 semicolon() --> scan_white_space, ";", scan_white_space.
 
 printc() :- 'C'(_, X, _), writeln(X), fail.
-test :- parse_file(test, X), writeln(X).
+test :- parse_file(test, X), writeln(X), fail.
 
