@@ -67,3 +67,9 @@ DllExport prolog_int call_conv bt_create(CTXTdecl)
    return TRUE;
 }
 
+/* New Definition: bt_init(dbname:input,handle:output,retval:output) from int c_bt_init(string dbname,int handle). */
+prolog_int c_bt_init(char * dbname, prolog_int handle);
+DllExport prolog_int call_conv bt_init(CTXTdecl)
+{
+   prolog_term dbnameIn;
+   char *dbname;

@@ -29,13 +29,30 @@ using namespace kyotocabinet;
 const int NO_ERROR				=  0;
 const int META_OPEN_ERROR 		=  1;
 const int META_INSERT_ERROR 	=  2;
-const int META_CLOSE_ERROR 		=  3;
-const int DB_OPEN_ERROR			=  4;
-const int DB_CLOSE_ERROR		=  5;
-const int INVALID_ARGUMENTS		=  6;
+const int META_READ_ERROR		=  3;
+const int META_CLOSE_ERROR 		=  4;
+const int DB_OPEN_ERROR			=  5;
+const int DB_CLOSE_ERROR		=  6;
+const int INVALID_ARGUMENTS		=  7;
 
 // other constants
 #define MAXLINE 				4096
+
+// structure for holding pointers to the open lists
+struct open_d
+{
+	char *dbname;
+	char *predname;
+	int arity;
+	int indexon;
+	int handle;
+	ForestDB *db;
+
+	struct open_d *next;
+};
+
+struct open_d *list_head = NULL;
+int nextHandle = 0;
 
 extern "C" int c_bt_create(CTXTdecl char *dbname, char *predname, int arity, int indexon)
 {
@@ -63,6 +80,7 @@ extern "C" int c_bt_create(CTXTdecl char *dbname, char *predname, int arity, int
 	// create the meta database
 	if (!hashdb.open(buff, HashDB::OWRITER | HashDB::OCREATE)) {
 	  cerr << "open error: " << hashdb.error().name() << endl;
+	  return META_OPEN_ERROR;
 	}
 
 	// store the meta values
@@ -117,6 +135,85 @@ extern "C" int c_bt_create(CTXTdecl char *dbname, char *predname, int arity, int
 	  cerr << "close error: " << db.error().name() << endl;
 	  return DB_CLOSE_ERROR;
 	}	
+
+	return NO_ERROR;
+}
+
+extern "C" int c_bt_init(CTXTdecl char *dbname, prolog_term t)
+{
+	char buff[MAXLINE];
+	// open the meta database
+	HashDB hashdb;
+	sprintf(buff, "%s/meta", dbname);
+
+	// open the meta database
+	if (!hashdb.open(buff, HashDB::OWRITER | HashDB::OCREATE)) {
+	  cerr << "open error: " << hashdb.error().name() << endl;
+	  return META_OPEN_ERROR;
+	}
+
+	// read the predicate name
+	size_t size;
+	char *predname = hashdb.get("predname", 8, &size);
+
+	if(predname == NULL)
+	{
+		//cerr << "read error: " << hashdb.error().name() << endl;
+		printf("READ ERROR: %s.\n", hashdb.error().name());
+		return META_READ_ERROR;
+	}
+
+	// read the arity
+	char *arity_s = hashdb.get("arity", 5, &size);
+	int arity = std::atoi(arity_s);
+
+	if(arity_s == NULL)
+	{
+		cerr << "read error: " << hashdb.error().name() << endl;
+		return META_READ_ERROR;
+	}
+
+	// read the indexon
+	char *indexon_s = hashdb.get("indexon", 7, &size);
+	int indexon = std::atoi(indexon_s);
+	
+	if(indexon_s == NULL)
+	{
+		cerr << "read error: " << hashdb.error().name() << endl;
+		return META_READ_ERROR;
+	}
+
+	// close the meta database
+	if (!hashdb.close()) {
+	  cerr << "close error: " << hashdb.error().name() << endl;
+	  return META_CLOSE_ERROR;
+	}	
+
+	// open the forest
+	ForestDB *db = new ForestDB();
+	sprintf(buff, "%s/db", dbname);
+
+	// open the database
+	if (!db->open(buff, ForestDB::OWRITER | ForestDB::OCREATE)) {
+	  cerr << "open error: " << db->error().name() << endl;
+	  return DB_OPEN_ERROR;
+	}
+
+	// build the structure
+	struct open_d *h = (struct open_d *)malloc(sizeof(struct open_d));
+	h->dbname = dbname;
+	h->predname = predname;
+	h->arity = arity;
+	h->indexon = indexon;
+	h->handle = nextHandle++;
+	h->db = db;
+
+	h->next = list_head;
+	list_head = h;
+
+	// unify the handle number
+	//prolog_term t = reg_term(CTXTdecl 2);
+	c2p_int(CTXTdeclc 654, t);
 
 	return NO_ERROR;
 }
