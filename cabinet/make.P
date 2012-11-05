@@ -36,16 +36,20 @@ make_linux() :-
 	xsb_configuration(config_dir,ConfPath),
 	xsb_configuration(emudir,EmuPath),
 	% 1) compile bt_c.cpp
-	shell(['g++ -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -L. -L.. -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -c -o bt_c.o bt_c.cpp ']),
+	%shell(['g++ -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -L. -L.. -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -c -o bt_c.o bt_c.cpp ']),
+	shell(['g++ -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -L. -L.. -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -c -fPIC -Wall -pipe -o bt_c.o bt_c.cpp ']),
 	% 2) make wrapper
 	wrap('bt_c.H','xsb_wrap_bt_c.c'),
 	% 3) compile wrapper
 	shell(['gcc -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -fPIC -c xsb_wrap_bt_c.c  -o xsb_wrap_bt_c.o -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc']),
 	% 3) make so
-	shell(['g++ -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc ',
+	shell(['g++ -s -fPIC -Wall -pipe -I',ConfPath,' -I',EmuPath,' -I',PkgPath,' -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc ',
    	       '-shared ',
  	       '-o bt_c.so xsb_wrap_bt_c.o ']).
 
 
+test() :- btinit(test,A), btinsert(A,a(b,c)).
 
-?- clean, make, [bt_c].
+?- clean, make, [bt_c], [bt].
+
+% gcc -s -o ./bt_c.so -shared ./bt_c.c   -Wall -fPIC -I/home/ken/XSB/emu -I/home/ken/XSB/config/x86_64-unknown-linux-gnu  -O3 -fno-strict-aliasing  -Wall -pipe  -lqdbm -B/usr/local/lib 

@@ -35,6 +35,11 @@ const int DB_OPEN_ERROR			=  5;
 const int DB_CLOSE_ERROR		=  6;
 const int INVALID_ARGUMENTS		=  7;
 
+const int NO_RESULTS			=  8;
+const int NO_SUCH_HANDLE		=  9;
+
+const int DATA_INSERT_ERROR		= 10;
+
 // other constants
 #define MAXLINE 				4096
 
@@ -48,12 +53,36 @@ struct open_d
 	int handle;
 	ForestDB *db;
 
+	size_t buffer_size;
+	unsigned long current_position;
+	char *current_location;
+	char *result_buffer;
+
 	struct open_d *next;
 };
 
 struct open_d *list_head = NULL;
 int nextHandle = 0;
 
+
+/** Look up a database structure based on handle number **/
+struct open_d *find(int index)
+{
+	struct open_d *trav = list_head;
+
+	while(trav != NULL)
+	{
+		// check the handle number here
+		if(trav->handle == index)
+			return trav;
+		// advance the traveller
+		trav = trav->next;
+	}
+
+	return NULL;
+}
+
+///////// C_BT_CREATE /////////////////////////////////////////////////////////////
 extern "C" int c_bt_create(CTXTdecl char *dbname, char *predname, int arity, int indexon)
 {
 	char buff[MAXLINE];
@@ -139,7 +168,8 @@ extern "C" int c_bt_create(CTXTdecl char *dbname, char *predname, int arity, int
 	return NO_ERROR;
 }
 
-extern "C" int c_bt_init(CTXTdecl char *dbname, prolog_term t)
+///////// C_BT_INIT /////////////////////////////////////////////////////////////
+extern "C" int c_bt_init(CTXTdecl char *dbname, int *t)
 {
 	char buff[MAXLINE];
 	// open the meta database
@@ -211,45 +241,116 @@ extern "C" int c_bt_init(CTXTdecl char *dbname, prolog_term t)
 	h->next = list_head;
 	list_head = h;
 
-	// unify the handle number
-	//prolog_term t = reg_term(CTXTdecl 2);
-	c2p_int(CTXTdeclc 654, t);
+	// set the handle number
+	(*t) = h->handle;
 
 	return NO_ERROR;
 }
 
-extern "C" int btest()
+///////// C_BT_CLOSE //////////////////////////////////////////////////////////
+extern "C" int c_bt_close(int handle)
 {
-	ForestDB db;
+	// find the handle	
+	struct open_d *db = find(handle);
 
-	// open the database
-	if (!db.open("casket.kch", ForestDB::OWRITER | ForestDB::OCREATE)) {
-	  cerr << "open error: " << db.error().name() << endl;
+	if(db == NULL)
+		return NO_SUCH_HANDLE;
+
+	if(!db->db->close())
+		return DB_CLOSE_ERROR;
+
+	// TODO: Free the handles and remove the struct from the list
+
+	return NO_ERROR;
+}
+
+///////// C_BT_INSERT /////////////////////////////////////////////////////////
+extern "C" int c_bt_insert(int handle, prolog_term val)
+{
+	// find the handle	
+	struct open_d *db = find(handle);
+
+	if(db == NULL)
+		return NO_SUCH_HANDLE;
+
+	prolog_term key = p2p_arg(val, db->indexon);
+	char *buff = canonical_term(CTXTdecl key, 1);
+	int size = cannonical_term_size(CTXTdecl) + 1;
+	char keystr[size];
+	strncpy(keystr, buff, size);
+
+	buff = canonical_term(CTXTdecl val, 1);
+	size = cannonical_term_size(CTXTdecl) + 1;
+	char valstr[size];
+	strncpy(valstr, buff, size);
+
+	if(!db->db->append(keystr, strlen(keystr)+1, valstr, strlen(valstr)))
+		return DATA_INSERT_ERROR; 
+
+	return NO_ERROR;
+}
+
+///////// C_BT_QUERY_INIT /////////////////////////////////////////////////////
+extern "C" int c_bt_query_init(int handle, char *keystr)
+{
+	// find the handle	
+	struct open_d *db = find(handle);
+
+	if(db == NULL)
+		return NO_SUCH_HANDLE;
+
+	// send the query to the database
+	db->result_buffer = db->db->get(keystr, strlen(keystr), &db->buffer_size);
+	db->current_location = db->result_buffer;
+	db->current_position = 0;
+
+	if(db->result_buffer == NULL)
+		return NO_RESULTS;
+
+	return NO_ERROR;
+}
+
+///////// C_BT_QUERY_NEXT /////////////////////////////////////////////////////
+extern "C" int c_bt_query_next(int handle, char **valstr)
+{
+	// find the handle	
+	struct open_d *db = find(handle);
+
+	if(db == NULL)
+		return NO_SUCH_HANDLE;
+
+	// if the buffer size is 0, there are no results queued
+	if(db->buffer_size == db->current_position)
+	{
+		// free the space
+		if(db->result_buffer != NULL)
+		{
+			delete(db->result_buffer);
+			db->result_buffer = NULL;
+			db->current_location = NULL;
+			db->current_position = 0;
+		}		
+		return NO_RESULTS;
 	}
 
-	// try adding a record
-	if (!db.append("hello", 5, "world\0", 6)) {
-		cerr << "insert error: " << db.error().name() << endl;
-	}
-
-	if (!db.append("hello", 5, "this rocks\0", 11)) {
-		cerr << "insert error: " << db.error().name() << endl;
-	}
-
-	// retrieve the record
-	size_t sizeptr;
-	char *val;
-	if((val = db.get("hello", 5, &sizeptr)) == NULL) {
-		cerr << "get error: " << db.error().name() << endl;
-	}
+	if(db->result_buffer == NULL)
+		return NO_RESULTS;
 	
-	printf("Retrieved: %s (length %lu)\n", val, sizeptr);
+	// find out how long the next string is
+	int rlen = strlen(db->result_buffer);
 
+	// allocate enough space to return it
+	char *buff = (char *)malloc(sizeof(char) * rlen);
 
-	// close the dfatabase
-	if (!db.close()) {
-	  cerr << "close error: " << db.error().name() << endl;
-	}	
+	// copy the bytes
+	strcpy(buff, db->current_location);
 
-	return FALSE;
+	// advance the buffer and update the size
+	db->current_location += rlen * sizeof(char);
+	db->current_position += rlen;
+
+	// point the valstr to the new space
+	(*valstr) = buff;
+
+	return NO_ERROR;
 }

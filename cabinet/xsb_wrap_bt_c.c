@@ -9,25 +9,6 @@
 #include "/home/ken/XSB/emu/cinterf.h"
 #include "/home/ken/XSB/emu/context.h"
 
-/* New Definition: test(retval:output) from int btest(). */
-prolog_int btest();
-DllExport prolog_int call_conv test(CTXTdecl)
-{
-   prolog_term retvalOut;
-   prolog_int retval;
-   retvalOut = extern_reg_term(1);
-   if(!is_var(retvalOut)) return FALSE;
-   xsb_query_save(CTXTc 1);
-   retval =   btest();
-   if (xsb_query_restore(CTXT)) {  // restore regs to prepare for exit
-      printf("Error finishing up btest.\n");
-      fflush(stdout);
-      return FALSE;
-   }
-   extern_c2p_int(retval,retvalOut);
-   return TRUE;
-}
-
 /* New Definition: bt_create(dbname:input,predname:input,arity:input,indexon:input,retval:output) from int c_bt_create(string dbname,string predname,int arity,int indexon). */
 prolog_int c_bt_create(char * dbname, char * predname, prolog_int arity, prolog_int indexon);
 DllExport prolog_int call_conv bt_create(CTXTdecl)
@@ -67,9 +48,140 @@ DllExport prolog_int call_conv bt_create(CTXTdecl)
    return TRUE;
 }
 
-/* New Definition: bt_init(dbname:input,handle:output,retval:output) from int c_bt_init(string dbname,int handle). */
-prolog_int c_bt_init(char * dbname, prolog_int handle);
+/* New Definition: bt_init(dbname:input,h:output,retval:output) from int c_bt_init(string dbname,intptr h). */
+prolog_int c_bt_init(char * dbname, prolog_int * h);
 DllExport prolog_int call_conv bt_init(CTXTdecl)
 {
    prolog_term dbnameIn;
    char *dbname;
+   prolog_term hOut;
+   prolog_int h;
+   prolog_term retvalOut;
+   prolog_int retval;
+   dbnameIn = extern_reg_term(1);
+   if (!is_string(dbnameIn)) return FALSE;
+   dbname = extern_p2c_string(dbnameIn);
+   hOut = extern_reg_term(2);
+   if(!is_var(hOut)) return FALSE;
+   retvalOut = extern_reg_term(3);
+   if(!is_var(retvalOut)) return FALSE;
+   xsb_query_save(CTXTc 3);
+   retval =   c_bt_init(dbname, &h);
+   if (xsb_query_restore(CTXT)) {  // restore regs to prepare for exit
+      printf("Error finishing up c_bt_init.\n");
+      fflush(stdout);
+      return FALSE;
+   }
+   extern_c2p_int(h,hOut);
+   extern_c2p_int(retval,retvalOut);
+   return TRUE;
+}
+
+/* New Definition: bt_close(handle:input,retval:output) from int c_bt_close(int handle). */
+prolog_int c_bt_close(prolog_int handle);
+DllExport prolog_int call_conv bt_close(CTXTdecl)
+{
+   prolog_term handleIn;
+   prolog_int  handle;
+   prolog_term retvalOut;
+   prolog_int retval;
+   handleIn = extern_reg_term(1);
+   if (!is_int(handleIn)) return FALSE;
+   handle = extern_p2c_int(handleIn);
+   retvalOut = extern_reg_term(2);
+   if(!is_var(retvalOut)) return FALSE;
+   xsb_query_save(CTXTc 2);
+   retval =   c_bt_close(handle);
+   if (xsb_query_restore(CTXT)) {  // restore regs to prepare for exit
+      printf("Error finishing up c_bt_close.\n");
+      fflush(stdout);
+      return FALSE;
+   }
+   extern_c2p_int(retval,retvalOut);
+   return TRUE;
+}
+
+/* New Definition: bt_insert(handle:input,valstr:input,retval:output) from int c_bt_insert(int handle,term valstr). */
+prolog_int c_bt_insert(prolog_int handle, prolog_term valstr);
+DllExport prolog_int call_conv bt_insert(CTXTdecl)
+{
+   prolog_term handleIn;
+   prolog_int  handle;
+   prolog_term valstr;
+   prolog_term retvalOut;
+   prolog_int retval;
+   handleIn = extern_reg_term(1);
+   if (!is_int(handleIn)) return FALSE;
+   handle = extern_p2c_int(handleIn);
+   valstr = extern_reg_term(2);
+   retvalOut = extern_reg_term(3);
+   if(!is_var(retvalOut)) return FALSE;
+   xsb_query_save(CTXTc 3);
+   retval =   c_bt_insert(handle, valstr);
+   if (xsb_query_restore(CTXT)) {  // restore regs to prepare for exit
+      printf("Error finishing up c_bt_insert.\n");
+      fflush(stdout);
+      return FALSE;
+   }
+   extern_c2p_int(retval,retvalOut);
+   return TRUE;
+}
+
+/* New Definition: bt_query_init(handle:input,keystr:input,retval:output) from int c_bt_query_init(int handle,string keystr). */
+prolog_int c_bt_query_init(prolog_int handle, char * keystr);
+DllExport prolog_int call_conv bt_query_init(CTXTdecl)
+{
+   prolog_term handleIn;
+   prolog_int  handle;
+   prolog_term keystrIn;
+   char *keystr;
+   prolog_term retvalOut;
+   prolog_int retval;
+   handleIn = extern_reg_term(1);
+   if (!is_int(handleIn)) return FALSE;
+   handle = extern_p2c_int(handleIn);
+   keystrIn = extern_reg_term(2);
+   if (!is_string(keystrIn)) return FALSE;
+   keystr = extern_p2c_string(keystrIn);
+   retvalOut = extern_reg_term(3);
+   if(!is_var(retvalOut)) return FALSE;
+   xsb_query_save(CTXTc 3);
+   retval =   c_bt_query_init(handle, keystr);
+   if (xsb_query_restore(CTXT)) {  // restore regs to prepare for exit
+      printf("Error finishing up c_bt_query_init.\n");
+      fflush(stdout);
+      return FALSE;
+   }
+   extern_c2p_int(retval,retvalOut);
+   return TRUE;
+}
+
+/* New Definition: bt_query_next(handle:input,valstr:output,retval:output) from int c_bt_query_next(int handle,stringptr valstr). */
+prolog_int c_bt_query_next(prolog_int handle, char ** valstr);
+DllExport prolog_int call_conv bt_query_next(CTXTdecl)
+{
+   prolog_term handleIn;
+   prolog_int  handle;
+   prolog_term valstrOut;
+   char *valstr;
+   prolog_term retvalOut;
+   prolog_int retval;
+   handleIn = extern_reg_term(1);
+   if (!is_int(handleIn)) return FALSE;
+   handle = extern_p2c_int(handleIn);
+   valstrOut = extern_reg_term(2);
+   if(!is_var(valstrOut)) return FALSE;
+   retvalOut = extern_reg_term(3);
+   if(!is_var(retvalOut)) return FALSE;
+   xsb_query_save(CTXTc 3);
+   retval =   c_bt_query_next(handle, &valstr);
+   if (xsb_query_restore(CTXT)) {  // restore regs to prepare for exit
+      printf("Error finishing up c_bt_query_next.\n");
+      fflush(stdout);
+      return FALSE;
+   }
+   extern_c2p_string(valstr,valstrOut);
+   extern_c2p_int(retval,retvalOut);
+   return TRUE;
+}
+
