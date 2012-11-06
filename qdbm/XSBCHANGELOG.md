@@ -39,14 +39,18 @@ and then access the clauses of the database using:
 just as if it were an indexed clause. The indexing code will determine if the call is bound on the
 indexed argument and make calls accordingly.
 
-## add to cmplib/parse.P
+You can rebuild the parser once the changes have been put in place by issueing the query:
+
+    ?- consult(parse, [sysmod]).
+
+## add to cmplib/parse.P (before any other parse_directive rules)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% CONCERNS:
     %% in the event that the user doesnt fail all the way through the options, tree handles may be left open
     %% this is obviosuly bad, it would be better to either have one handle always open per index (really ideal) or
     %% have the handle close after each call is finished (impossible? and less ideal)
-    parse_directive(import(as(from(PredIn/ArityIn, DBName),btree), _QrList,SymTab,ModName,ModStruct) :-
-      parse_directive(import(as(from(PredIn/ArityIn, DBName),btree(1))), _QrList,SymTab,ModName,ModStruct). 
+    parse_directive(import(as(from(PredIn/ArityIn, DBName),btree), _QrList,SymTab,ModName,ModStruct)) :-
+      parse_directive(import(as(from(PredIn/ArityIn, DBName),btree(1))), _QrList,SymTab,ModName,ModStruct)
     parse_directive(import(as(from(PredIn/ArityIn, DBName),btree(IndexonIn))), _QrList,SymTab,ModName,ModStruct) :- !,
       consult:consult(bt),
       %% initialize the B+ Tree
