@@ -25,35 +25,82 @@ Add:
     int cannonical_term_size(CTXTdeclc);
 
 
-### Building QDBM
-
-In order to use the B+ Tree library, the QDBM librarys must be build and installed on your machine. The process is pretty straightforward, and more information can be found [here](http://fallabs.com/qdbm/spex.html#installation).
-
-#### Linux Users:
-
-To build on linux, use the following commands from the qdbm directory:
-
-  `./configure`
-
-  `make`
-
-  `make check`
-  
-  `make install`
-
-#### MAC Users:
-
-Follow a similiar process:
-
-To build on linux, use the following commands from the qdbm directory:
-
-  `./configure`
-
-  `make mac`
-
-  `make check-mac`
-  
-  `make install-mac`
-
-#### Windows and other systems 
-See the [installation page](http://fallabs.com/qdbm/spex.html#installation).
+### For indexing implementation:
+## add to cmplib/parse.P
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% CONCERNS:
+    %% in the event that the user doesnt fail all the way through the options, tree handles may be left open
+    %% this is obviosuly bad, it would be better to either have one handle always open per index (really ideal) or
+    %% have the handle close after each call is finished (impossible? and less ideal)
+    parse_directive(import(as(from(PredIn/ArityIn, DBName),btree(IndexonIn))), _QrList,SymTab,ModName,ModStruct) :- !,
+      consult:consult(bt),
+      %% initialize the B+ Tree
+      (
+        bt:btinit(DBName, Handle) 
+        ; (
+          bt:btcreate(DBName, PredIn/ArityIn, IndexonIn),
+          bt:btinit(DBName, Handle)
+        )
+      ),
+      %% check that the arity is a match
+      bt:btarity(Handle, Arity),
+      (
+        ArityIn = Arity 
+          -> true 
+          ; misc_error(('Arity Mismatch (Expecting: ', Arity, ' got ', ArityIn, ')'))
+      ),
+      %% check the indexon is a match
+      bt:btindexon(Handle, Indexon),
+      (
+        IndexonIn = Indexon
+          -> true 
+          ; misc_error(('Indexon Mismatch (Expecting: ', Indexon, ' got ', IndexonIn, ')'))
+      ),
+      %% get the real name it is stored with
+      bt:btpredname(Handle, PredName),
+      %% we can close this handle, unfortunetly at this time we have to reopen a connection everytime we query
+      bt:btclose(Handle),
+      %% create a blank list of variables
+      basics:length(ArgList, Arity),
+      % get the index on argument
+      basics:ith(Indexon, ArgList, IndexVar),
+      %% create the head of the rule
+      RuleHead =.. [PredIn|ArgList],
+      %% assert a predicate to respond to queries against this variable.
+      Rule = 
+      (
+        RuleHead :- 
+          % determine if its bound or not
+          var(IndexVar) ->
+          (
+            %% UNBOUNDED CALL, USE BT_GETALL
+            %% open a database connection
+            bt:btinit(DBName, Handle2),
+            (
+              (
+                bt:btgetall(Handle2, Result),
+                Result =.. [PredName|ArgList]
+              )
+              ; (
+                standard:writeln(close),
+                bt:btclose(Handle2), !, fail
+              )
+            )
+          )  ;
+          (
+            %% BOUNDED CALL, USE BT_GET
+            %% open a database connection
+            bt:btinit(DBName, Handle2),
+            (
+              bt:btget(Handle2, IndexVar, Result) 
+              ; (
+                standard:writeln(close),
+                bt:btclose(Handle2), !, fail
+              )
+            ),
+            Result =.. [PredName|ArgList]
+          )
+      ),
+      parse_clause(Rule, ModStruct, ModName).
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
