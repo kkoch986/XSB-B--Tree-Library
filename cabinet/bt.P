@@ -1,0 +1,47 @@
+:- import bt_create/5 from bt_c.
+
+%% Create a new B+ Tree
+btcreate(DBName, Predname, Arity, Indexon) :- bt_create(DBName,Predname,Arity,Indexon,_Error), handle_error(_Error).
+
+%% Open a B+ Tree and get a Handle Back.
+btinit(DBName, Handle) :- bt_init(DBName, Handle, _Error), handle_error(_Error).
+
+%% close a B+ Tree based on its handle
+btclose(Handle) :- bt_close(Handle, _Error), handle_error(_Error).
+
+%% insert a value into the Tree
+btinsert(Handle, Value) :- bt_insert(Handle, Value, _Error), handle_error(_Error).
+
+%% Execute a Key Based Query
+%% this will load the results into a buffer for the provided Handle which can be iterated once over
+btget(Handle, Key, Value) :- 
+	bt_query_init(Handle, Key, InitError), 
+	handle_error(InitError),
+	btget_next(Handle, Value).
+
+btget_next(Handle, Value) :- 
+	bt_query_next(Handle, Value0, Error),
+	handle_error(Error),
+	(
+		Value = Value0 
+		; btget_next(Handle, Value)
+	).
+
+
+%% transform an error number into an atom
+db_error(0, 'No Error').
+db_error(1, 'Meta Table Open Error').
+db_error(2, 'Meta Table Insert Error').
+db_error(3, 'Meta Table Read Error').
+db_error(4, 'META_CLOSE_ERROR'). 	
+db_error(5, 'DB_OPEN_ERROR').		
+db_error(6, 'DB_CLOSE_ERROR').	
+db_error(7, 'INVALID_ARGUMENTS').
+db_error(8, 'NO_RESULTS').
+db_error(9, 'NO_SUCH_HANDLE').
+db_error(10,'DATA_INSERT_ERROR').	
+
+print_error(ECode) :- ECode \== 0, db_error(ECode, Message), write('[ERROR] '), writeln(Message).
+
+handle_error(0) :- !.
+handle_error(E) :- print_error(E), !, fail.
