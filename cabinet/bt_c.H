@@ -1,29 +1,38 @@
-:- ldoption('-lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -B/usr/local/lib').
+:- ldoption('-lqdbm -B/usr/local/lib ./bt_cp.so ./bt_cp.cpp').
 
-%% Creates a new B+ Tree
-%% the last value is an error code (or 0 if no error)
-:- foreign_pred bt_create(+dbname, +predname, +arity, +indexon, -retval) from c_bt_create(dbname:string, predname:string, arity:int, indexon:int):int.
+%% new create stuff
+:- export bt_create/5.
 
-%% Loads a B+ Tree and returns a handle
-%% the last value is an error code (or 0 if no error)
-:- foreign_pred bt_init(+dbname, -h, -retval) from c_bt_init(dbname:string, h:intptr):int.
+%% bt_init/0. Initializes a B+ Villa DB
+:- export bt_init/3, bt_close/2, bt_size/3, bt_getinfo/5.
+:- export bt_insert/3.
+:- export bt_getl/2, bt_getnext/2.
+:- export bt_drop/1.
 
-%% Closes a B+ Tree handle
-:- foreign_pred bt_close(+handle, -retval) from c_bt_close(handle:int):int.
+%% prefix and range queries
+:- export bt_prefix_jump/2, bt_prefix_next/2.
+:- export bt_range_init/3, bt_range_next/2.
 
-%% Inserts a value into the tree.
-:- foreign_pred bt_insert(+handle, +valstr, -retval) from c_bt_insert(handle:int, valstr:term):int.
+% manual cursor mode
+:- export bt_mcm_init/1.
+:- export bt_mcm_first/1, bt_mcm_last/1.
+:- export bt_mcm_next/1, bt_mcm_prev/1.
+:- export bt_mcm_jump/2, bt_mcm_jump_rev/2.
+:- export bt_mcm_key/2, bt_mcm_val/2.
+:- export bt_mcm_next_key/1.
+:- export bt_mcm_out/1.
 
-%% Initializes a query
-%% this should be called to load the query results into the buffer for this handle
-%% NO_ERROR is returned in the error field (final argument) if at least one result is found
-%% NO_RESULTS is returned in the error field if no results are found
-:- foreign_pred bt_query_init(+handle, +keystr, -retval) from c_bt_query_init(handle:int, keystr:string):int.
+% get info about a tree
+:- export bt_tree_name/2.
 
-%% returns the next result in the query results queue
-:- foreign_pred bt_query_next(+handle, -valstr, -retval) from c_bt_query_next(handle:int, valstr:stringptr):int.
+% transactions
+:- export bt_trans_start/1, bt_trans_commit/1, bt_trans_abort/1.
 
+% backup/restore
+% :- export bt_export/2, bt_import/2.
 
+% repairing 
+% :- export bt_repair/2.
 
-%% gcc -s -o ./bt_c.so -shared ./bt_c.c   -Wall -fPIC -I/home/ken/XSB/emu -I/home/ken/XSB/config/x86_64-unknown-linux-gnu  -O3 -fno-strict-aliasing  -Wall -pipe  -lqdbm -B/usr/local/lib 
-%% gcc -s -o ./bt_c.so -shared ./bt_c.cpp xsb_wrap_bt_c.c  -Wall -fPIC -I/home/ken/XSB/emu -I/home/ken/XSB/config/x86_64-unknown-linux-gnu  -O3 -fno-strict-aliasing  -Wall -pipe  -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -B/usr/local/lib 
+% meta data
+:- export bt_get_predname/2, bt_get_arity/2, bt_get_indexon/2.
