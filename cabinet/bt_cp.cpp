@@ -18,9 +18,6 @@ using namespace kyotocabinet;
 
 #include "bterrs.h"
 
-// other constants
-#define MAXLINE 				4096
-
 // structure for holding pointers to the open lists
 struct open_d
 {
@@ -274,6 +271,21 @@ extern "C" int c_bt_get_info(int handle, char **predname_in, int *arity_in, int 
 	return NO_ERROR;
 }
 
+extern "C" int c_bt_dbname(int handle, char **treename)
+{
+	// find the handle	
+	struct open_d *db = find(handle);
+
+	if(db == NULL)
+		return NO_SUCH_HANDLE;
+
+	// set the tree name 
+	(*treename) = db->dbname;
+
+	// return 
+	return NO_ERROR;
+}
+
 ///////// C_BT_INSERT /////////////////////////////////////////////////////////
 extern "C" int c_bt_insert(int handle, char *keystr, char *valstr)
 {
@@ -283,73 +295,73 @@ extern "C" int c_bt_insert(int handle, char *keystr, char *valstr)
 	if(db == NULL)
 		return NO_SUCH_HANDLE;
 
-	if(!db->db->append(keystr, strlen(keystr)+1, valstr, strlen(valstr)))
+	if(!db->db->append(keystr, strlen(keystr), valstr, strlen(valstr)+1))
 		return DATA_INSERT_ERROR; 
 
 	return NO_ERROR;
 }
 
-// ///////// C_BT_QUERY_INIT /////////////////////////////////////////////////////
-// extern "C" int c_bt_query_init(int handle, char *keystr)
-// {
-// 	// find the handle	
-// 	struct open_d *db = find(handle);
+///////// C_BT_QUERY_INIT /////////////////////////////////////////////////////
+extern "C" int c_bt_query_init(int handle, char *keystr)
+{
+	// find the handle	
+	struct open_d *db = find(handle);
 
-// 	if(db == NULL)
-// 		return NO_SUCH_HANDLE;
+	if(db == NULL)
+		return NO_SUCH_HANDLE;
 
-// 	// send the query to the database
-// 	db->result_buffer = db->db->get(keystr, strlen(keystr), &db->buffer_size);
-// 	db->current_location = db->result_buffer;
-// 	db->current_position = 0;
+	// send the query to the database
+	db->result_buffer = db->db->get(keystr, strlen(keystr), &db->buffer_size);
+	db->current_location = db->result_buffer;
+	db->current_position = 0;
 
-// 	if(db->result_buffer == NULL)
-// 		return NO_RESULTS;
+	if(db->result_buffer == NULL)
+		return NO_RESULTS;
 
-// 	return NO_ERROR;
-// }
+	return NO_ERROR;
+}
 
-// ///////// C_BT_QUERY_NEXT /////////////////////////////////////////////////////
-// extern "C" int c_bt_query_next(int handle, char **valstr)
-// {
-// 	// find the handle	
-// 	struct open_d *db = find(handle);
+///////// C_BT_QUERY_NEXT /////////////////////////////////////////////////////
+extern "C" int c_bt_query_next(int handle, char **valstr)
+{
+	// find the handle	
+	struct open_d *db = find(handle);
 
-// 	if(db == NULL)
-// 		return NO_SUCH_HANDLE;
+	if(db == NULL)
+		return NO_SUCH_HANDLE;
 
-// 	// if the buffer size is 0, there are no results queued
-// 	if(db->buffer_size == db->current_position)
-// 	{
-// 		// free the space
-// 		if(db->result_buffer != NULL)
-// 		{
-// 			delete(db->result_buffer);
-// 			db->result_buffer = NULL;
-// 			db->current_location = NULL;
-// 			db->current_position = 0;
-// 		}		
-// 		return NO_RESULTS;
-// 	}
+	// if the buffer size is 0, there are no results queued
+	if(db->buffer_size <= db->current_position)
+	{
+		// free the space
+		if(db->result_buffer != NULL)
+		{
+			delete(db->result_buffer);
+			db->result_buffer = NULL;
+			db->current_location = NULL;
+			db->current_position = 0;
+		}		
+		return NO_RESULTS;
+	}
 
-// 	if(db->result_buffer == NULL)
-// 		return NO_RESULTS;
+	if(db->result_buffer == NULL)
+		return NO_RESULTS;
 	
-// 	// find out how long the next string is
-// 	int rlen = strlen(db->result_buffer);
+	// find out how long the next string is
+	int rlen = strlen(db->result_buffer);
 
-// 	// allocate enough space to return it
-// 	char *buff = (char *)malloc(sizeof(char) * rlen);
+	// allocate enough space to return it
+	char *buff = (char *)malloc(sizeof(char) * rlen);
 
-// 	// copy the bytes
-// 	strcpy(buff, db->current_location);
+	// copy the bytes
+	strcpy(buff, db->current_location);
 
-// 	// advance the buffer and update the size
-// 	db->current_location += rlen * sizeof(char);
-// 	db->current_position += rlen;
+	// advance the buffer and update the size
+	db->current_location += rlen * sizeof(char) + 1;
+	db->current_position += rlen + 1;
 
-// 	// point the valstr to the new space
-// 	(*valstr) = buff;
+	// point the valstr to the new space
+	(*valstr) = buff;
 
-// 	return NO_ERROR;
-// }
+	return NO_ERROR;
+}

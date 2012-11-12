@@ -24,9 +24,7 @@
 #include <vista.h>
 //#include <villa.h>
 
-#define DBNAME "xsbdb"
-#define BNUM 10
-#define MAXLINE 4096
+#include "bterrs.h"
 
 static const int DEBUG = 0;
 void debugprintf(char *message, ... )
@@ -211,6 +209,32 @@ DllExport int call_conv bt_getinfo(CTXTdecl)
 }
 
 /**
+ * bt_db_name/3 gets the name of the given database handle
+ * bt_db_name(+Handle, -Name, -Error)
+ **/
+int c_bt_dbname(int handle, char **treename);
+DllExport int call_conv bt_dbname(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		fprintf(stderr, "Insert Error: Handle Non-Integer Type.\n");
+		return FALSE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+	char *treename;
+	int error = c_bt_dbname(handle_index, &treename);
+
+	// set the results
+	ctop_int(3, error);
+	extern_ctop_string(2, treename);
+
+	return TRUE;
+}
+
+/**
  * bt_insert/3.
  * Inserts the given term into the B+ Tree given by the second argument.
  * The B+ Tree must match on predicate symbol and arity and will be indexed on 
@@ -297,6 +321,71 @@ DllExport int call_conv bt_insert(CTXTdecl)
 
 	return TRUE;
 }
+
+/**
+ *	bt_query_init/2. Used to initialze a bucket of values that match the current query key
+ *  bt_query_init(+TreeHandle, +Key, -Error)
+ */
+int c_bt_query_init(int handle, char *keystr);
+DllExport int call_conv bt_query_init(CTXTdecl)
+{
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int handle_index = p2c_int(tree_term);
+
+	// the second argument is the key
+	prolog_term key = reg_term(CTXTdecl 2);
+	char *buff = canonical_term(CTXTdecl key, 1);
+	int size = cannonical_term_size(CTXTdecl) + 1;
+	char key_str[size];
+	strncpy(key_str, buff, size);
+
+	// perform the lookup
+	int error = c_bt_query_init(handle_index, key_str);
+
+	// unify the error code
+	ctop_int(3,error);
+
+	return TRUE;
+}
+
+/**
+ * bt_query_next/3. Retrieve the next value from an active key query handle.
+ * bt_query_next(+TreeHandle, -Value, -Error).
+ **/
+int c_bt_query_next(int handle, char **valstr);
+DllExport int call_conv bt_query_next(CTXTdecl)
+{
+	// the first argument is the handle to the tree
+	prolog_term tree_term = reg_term(CTXTdecl 1);
+	if(!is_int(tree_term))
+	{
+		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
+		return FALSE;	
+	} 
+
+	int handle_index = p2c_int(tree_term);
+	char *value;
+	int error = c_bt_query_next(handle_index, &value);
+
+	// unify the error
+	ctop_int(3,error);	
+
+	// unify the string and return
+	STRFILE strfile;
+	strfile.strcnt = strlen(value);
+	strfile.strptr = value; strfile.strbase = value;
+
+	read_canonical_term(CTXTdecl NULL, &strfile, 1);
+	return TRUE;
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -458,146 +547,6 @@ char *pt2dbname(char *predname, int arity, int arg)
 	return buff;
 }
 
-/**
- *	bt_get/3. Used to get a single value from a tree
- *  bt_Get(+Handle, -Value, +Key)
- */
-DllExport int call_conv bt_get(CTXTdecl)
-{
-	// the first argument is the handle to the tree
-	prolog_term tree_term = reg_term(CTXTdecl 1);
-	if(!is_int(tree_term))
-	{
-		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
-		return FALSE;	
-	} 
-
-	int tree_index = p2c_int(tree_term);
-	// check that we can find an IndexTable in this range
-	if(tree_index >= nextIndex)
-	{
-		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
-		return FALSE;
-	}
-
-	struct IndexTable tree = villas[tree_index];
-
-	if(villas[tree_index].open == FALSE)
-	{
-		fprintf(stderr, "Error: Handle has been closed.\n");
-		return FALSE;
-	}
-
-	// the second argument is the key
-	prolog_term key = reg_term(CTXTdecl 3);
-	char *buff = canonical_term(CTXTdecl key, 1);
-	int size = cannonical_term_size(CTXTdecl) + 1;
-	char key_str[size];
-	strncpy(key_str, buff, size);
-
-	// perform the lookup
-	int valsize;
-	char *value = vlget(tree.villa, key_str, -1, &valsize);
-	STRFILE strfile;
-	strfile.strcnt = valsize;
-	strfile.strptr = value; strfile.strbase = value;
-
-	debugprintf("Found Value: %s\n", value);
-
-	// unify with the return argument
-	read_canonical_term(CTXTdecl NULL, &strfile, 1);
-
-	return TRUE;
-}
-
-/**
- *	bt_getl/2. Used to get a handle to a list of values from a tree
- *  bt_getl(+TreeHandle, +Key)
- */
-DllExport int call_conv bt_getl(CTXTdecl)
-{
-	// the first argument is the handle to the tree
-	prolog_term tree_term = reg_term(CTXTdecl 1);
-	if(!is_int(tree_term))
-	{
-		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
-		return FALSE;	
-	} 
-
-	int tree_index = p2c_int(tree_term);
-	// check that we can find an IndexTable in this range
-	if(tree_index >= nextIndex)
-	{
-		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
-		return FALSE;
-	}
-
-	struct IndexTable tree = villas[tree_index];
-
-	if(villas[tree_index].open == FALSE)
-	{
-		fprintf(stderr, "Error: Handle has been closed.\n");
-		return FALSE;
-	}
-
-	// the second argument is the key
-	prolog_term key = reg_term(CTXTdecl 2);
-	char *buff = canonical_term(CTXTdecl key, 1);
-	int size = cannonical_term_size(CTXTdecl) + 1;
-	char key_str[size];
-	strncpy(key_str, buff, size);
-
-	// perform the lookup
-	villas[tree_index].activeList = vlgetlist(tree.villa, key_str, -1);
-
-	return TRUE;
-}
-
-/**
- * bt_getnext/2. Retrieve the next value from the CBList handle.
- * bt_getnext(+TreeHandle, -Value).
- **/
-DllExport int call_conv bt_getnext(CTXTdecl)
-{
-	// the first argument is the handle to the tree
-	prolog_term tree_term = reg_term(CTXTdecl 1);
-	if(!is_int(tree_term))
-	{
-		fprintf(stderr, "Get Error: Tree Handle Not Integer.\n");
-		return FALSE;	
-	} 
-
-	int tree_index = p2c_int(tree_term);
-	// check that we can find an IndexTable in this range
-	if(tree_index >= nextIndex)
-	{
-		fprintf(stderr, "Insert Error: Handle Exceeds Range of Loaded Tables.\n");
-		return FALSE;
-	}
-
-	if(villas[tree_index].open == FALSE)
-	{
-		fprintf(stderr, "Error: Handle has been closed.\n");
-		return FALSE;
-	}
-
-	char *value = NULL;
-	if(villas[tree_index].activeList != NULL)
-		value = cblistpop(villas[tree_index].activeList, NULL);
-
-	if(value == NULL)
-	{
-		debugprintf("List empty.\n");
-		return FALSE;
-	}
-	// unify the string and return
-	STRFILE strfile;
-	strfile.strcnt = strlen(value);
-	strfile.strptr = value; strfile.strbase = value;
-
-	read_canonical_term(CTXTdecl NULL, &strfile, 1);
-	return TRUE;
-}
 
 /*********************************************************/
 /** RANGE/PREFIX Queries		**************************/

@@ -1,3 +1,5 @@
+#define MAXLINE 				4096
+
 // define error constants
 const int NO_ERROR				=  0;
 const int META_OPEN_ERROR 		=  1;
