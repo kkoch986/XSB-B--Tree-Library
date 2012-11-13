@@ -17,7 +17,7 @@ make_darwin() :-
 	writeln('darwin'),
 	clean,
 	% 1) compile bt_cp.cpp
-	shell(['gcc -s -o ./bt_cp.so -shared ./bt_cp.cpp -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -B/usr/local/lib -fPIC']).
+	shell(['gcc -o ./bt_cp.so -shared ./bt_cp.cpp -lkyotocabinet -lstdc++ -lz -lpthread -lm -lc -B/usr/local/lib -fPIC']).
 
 make_linux() :-
 	writeln('linux'),
@@ -28,6 +28,8 @@ make_linux() :-
 
 test() :- btinit(test,A), btinsert(A,a(b,c)).
 
-?- clean, make, [bt_c], [bt].
 
 % gcc -s -o ./bt_c.so -shared ./bt_c.c   -Wall -fPIC -I/home/ken/XSB/emu -I/home/ken/XSB/config/x86_64-unknown-linux-gnu  -O3 -fno-strict-aliasing  -Wall -pipe  -lqdbm -B/usr/local/lib 
+
+build :- clean, make, [bt_c], [bt].
+test :- bt_init(test,H,_E), bt_query_init(H,a,_E2), bt_query_next(H,A1, _E3), writeln(A1), bt_query_prev(H,A2,_E4), writeln(A2), bt_query_next(H,A3,_E5), writeln(A3).

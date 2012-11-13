@@ -1,45 +1,191 @@
 :- import bt_create/5 from bt_c.
+:- import bt_init/3 from bt_c.
+:- import bt_close/2 from bt_c.
+:- import bt_size/3 from bt_c.
+:- import bt_insert/3 from bt_c.
+:- import bt_query_init/3, bt_query_next/3 from bt_c.
+:- import bt_mcm_init/2 from bt_c.
+:- import bt_mcm_first/2, bt_mcm_last/2 from bt_c.
+:- import bt_mcm_next/2, bt_mcm_prev/2 from bt_c.
+%:- import bt_mcm_jump/2, bt_mcm_jump_rev/2 from bt_c.
+:- import bt_mcm_key/3, bt_mcm_val/3 from bt_c.
+%:- import bt_mcm_next_key/1 from bt_c.
+%:- import bt_mcm_out/1 from bt_c.
+:- import bt_dbname/3 from bt_c.
+:- import bt_trans_start/2, bt_trans_commit/2, bt_trans_abort/2 from bt_c.
+:- import bt_get_predname/3, bt_get_arity/3, bt_get_indexon/3 from bt_c.
 
-%% Create a new B+ Tree
-btcreate(DBName, Predname, Arity, Indexon) :- bt_create(DBName,Predname,Arity,Indexon,_Error), handle_error(_Error).
+:- import numbervars/3, unnumbervars/3 from num_vars.
 
-%% Open a B+ Tree and get a Handle Back.
-btinit(DBName, Handle) :- bt_init(DBName, Handle, _Error), handle_error(_Error).
+:- export btinit/2, btclose/1, btsize/2, btdrop/1, btname/2, btcreate/3.
+:- export btinsert/2, btinsertkeep/2.
+:- export btget/3, btprefix/3, btrange/4, btgetall/2, btgetall_rev/2, 
+			btgetall_key/2, btgetall_key_rev/2.
+% :- export btimport/2, btexport/2, btpurgecorrupt/1, btrepair/2.
+:- export btminit/1, btmfirst/1, btmlast/1, btmnext/1, btmprev/1, 
+			btmjump/2, btmjump_rev/2, btmkey/2, btmval/2, btmout/1.
+:- export btstrans/1, btctrans/1, btatrans/1.
+:- export btpredname/2, btarity/2, btindexon/2.
 
-%% close a B+ Tree based on its handle
-btclose(Handle) :- bt_close(Handle, _Error), handle_error(_Error).
+% this function CREATES a new directory structure for the provided predicate and creates 
+% b+ tree and meta database inside it.
+btcreate(DBName, Pred/Arity, Argument) :- bt_create(DBName, Pred, Arity, Argument, Error), handle_error(Error).
 
-%% insert a value into the Tree
-btinsert(Handle, Value) :- bt_insert(Handle, Value, _Error), handle_error(_Error).
+%% This function will initialize a btree
+btinit(DBName, Handle) :- bt_init(DBName, Handle, Error), handle_error(Error).
 
-%% Execute a Key Based Query
-%% this will load the results into a buffer for the provided Handle which can be iterated once over
-btget(Handle, Key, Value) :- 
-	bt_query_init(Handle, Key, InitError), 
-	handle_error(InitError),
-	btget_next(Handle, Value).
+%% Close a B+ Tree.
+btclose(Handle) :- bt_close(Handle, Error), handle_error(Error).
 
-btget_next(Handle, Value) :- 
-	bt_query_next(Handle, Value0, Error),
+%% Return the size of the B+ Tree in Handle
+btsize(Handle, Size) :- bt_size(Handle, Size, Error), handle_error(Error).
+
+%% Insert a Term into a B+ Tree
+btinsert(Handle, Term) :- 
+	numbervars(Term, 0, _),
+	bt_insert(Handle, Term, Error),
+	handle_error(Error).
+	
+%% Non-Deterministically find terms that match the key exactly.
+btget(TreeHandle, Key, Value) :- 
+	bt_query_init(TreeHandle, Key, Error1),
+	handle_error(Error1),
+	btgetnext(TreeHandle, Value).
+
+btgetnext(TreeHandle, Value) :- 
+	bt_query_next(TreeHandle, Value0, Error),
 	handle_error(Error),
 	(
-		Value = Value0 
-		; btget_next(Handle, Value)
+		unnumbervars(Value0, 0, Value1), 
+		Value = Value1
+		; btgetnext(TreeHandle, Value)
+	).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Manual Cursor Mode (mcm)
+%% This allows the programmer to manually control the cursor.
+%%
+%% To use, first call btminit(+TreeHandle), then use the preds
+%% below to traverse the cursor
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% btminit/1. Initialize MCM on a tree handle. As with prefix
+%% and range queries, this ties up this tree handle so it cannot
+%% be used for anything else while processing in MCM.
+btminit(TreeHandle) :- bt_mcm_init(TreeHandle, Error), handle_error(Error).
+
+%% btmfirst/1. Move the cursor to the first record in the tree.
+btmfirst(TreeHandle) :- bt_mcm_first(TreeHandle, Error), handle_error(Error).
+
+%% btmlast/1. Move the cursor to the first record in the tree.
+btmlast(TreeHandle) :- bt_mcm_last(TreeHandle, Error), handle_error(Error).
+
+%% btmnext/1. Move the cursor to the next consecutive record in the tree.
+btmnext(TreeHandle) :- bt_mcm_next(TreeHandle, Error), handle_error(Error).
+
+%% btmprev/1. Move the cursor to the previous record in the tree.
+btmprev(TreeHandle) :- bt_mcm_prev(TreeHandle, Error), handle_error(Error).
+
+%% btmkey/2. Returns the current Key which the cursor is pointing to.
+%% Does not affect the cursor position.
+btmkey(TreeHandle, Key) :- 
+	bt_mcm_key(TreeHandle, Key0, Error), 
+	handle_error(Error), 
+	unnumbervars(Key0, 0, Key).
+
+%% btmval/2. Returns the current Value which the cursor is pointing to.
+%% Does not affect the cursor position.
+%% Notice the use of Val0, from the latest version, calls to the c level
+%% functions can be made only with variables when values are returned.
+btmval(TreeHandle, Val) :- 
+	catch(
+		(
+			bt_mcm_val(TreeHandle, Val0, Error), 
+			handle_error(Error)
+		),
+		_, 
+		standard:warning('Corrupt Record Found (should run btpurgecorrupt)')
+	), 
+	unnumbervars(Val0, 0, Val1), Val = Val1.
+
+%% btgetall/2. Returns each value in the tree on at a time starting
+%% from the first indexed value to the last. NOTE: Uses MCM so it will
+%% tie up the tree handle for the time you are using it.
+btgetall(TreeHandle, Value) :- 
+	btminit(TreeHandle), 
+	btmfirst(TreeHandle),
+	btgetallnext(TreeHandle, Value).
+
+btgetallnext(TreeHandle, Value) :- 
+	btmval(TreeHandle, Value0),
+	( 
+		unnumbervars(Value0, 0, Value1),
+		Value = Value1 ; 
+			btmnext(TreeHandle),
+			btgetallnext(TreeHandle, Value)
 	).
 
 
+%% btgetall_rev/2. Returns each value in the tree on at a time starting
+%% from the last indexed value to the first. NOTE: Uses MCM so it will
+%% tie up the tree handle for the time you are using it.
+btgetall_rev(TreeHandle, Value) :- 
+	btminit(TreeHandle), 
+	btmlast(TreeHandle),
+	btgetallprev(TreeHandle, Value).
+
+btgetallprev(TreeHandle, Value) :- 
+	btmval(TreeHandle, Value0),
+	( 
+		unnumbervars(Value0, 0, Value1),
+		Value = Value1 ; 
+		btmprev(TreeHandle),
+		btgetallprev(TreeHandle, Value)
+	).
+
+%% btname/2. Returns the name of the tree identified by the handle.
+%% This name also identifies the directory in which the tree files
+%% are held.
+btname(Handle, Name) :- bt_dbname(Handle, Name, Error), handle_error(Error).
+
+%% btstrans/1. Initiates a transaction on the given database.
+btstrans(Handle) :- bt_trans_start(Handle, Error), handle_error(Error).
+
+%% btctrans/1. Commits a transaction on the given database.
+btctrans(Handle) :- bt_trans_commit(Handle, Error), handle_error(Error).
+
+%% btatrans/1. Aborts a transaction on the given database.
+btatrans(Handle) :- bt_trans_abort(Handle, Error), handle_error(Error).
+
+% return some meta data about the btree.
+btpredname(Handle, PredName) 	:- bt_get_predname(Handle, PredName0, Error), handle_error(Error), PredName = PredName0.
+btarity(Handle, Arity) 			:- bt_get_arity(Handle, Arity0,Error), handle_error(Error), Arity = Arity0.
+btindexon(Handle, Indexon) 		:- bt_get_indexon(Handle, Indexon0,Error), handle_error(Error), Indexon = Indexon0.
+
+
 %% transform an error number into an atom
-db_error(0, 'No Error').
-db_error(1, 'Meta Table Open Error').
-db_error(2, 'Meta Table Insert Error').
-db_error(3, 'Meta Table Read Error').
-db_error(4, 'META_CLOSE_ERROR'). 	
-db_error(5, 'DB_OPEN_ERROR').		
-db_error(6, 'DB_CLOSE_ERROR').	
-db_error(7, 'INVALID_ARGUMENTS').
-db_error(8, 'NO_RESULTS').
-db_error(9, 'NO_SUCH_HANDLE').
-db_error(10,'DATA_INSERT_ERROR').	
+db_error( 0, 'NO_ERROR') :- !.
+db_error( 1, 'META_OPEN_ERROR') :- !.
+db_error( 2, 'META_INSERT_ERROR') :- !.
+db_error( 3, 'META_READ_ERROR') :- !.
+db_error( 4, 'META_CLOSE_ERROR') :- !.
+db_error( 5, 'DB_OPEN_ERROR') :- !.
+db_error( 6, 'DB_CLOSE_ERROR') :- !.
+db_error( 7, 'INVALID_ARGUMENTS') :- !.
+db_error( 8, 'NO_RESULTS') :- !.
+db_error( 9, 'NO_SUCH_HANDLE') :- !.
+db_error(10, 'DATA_INSERT_ERROR') :- !.
+db_error(11, 'SIZE_ERROR') :- !.
+db_error(12, 'HANDLE_NOT_INT') :- !.
+db_error(13, 'INSERT_NON_FUNCTO') :- !.
+db_error(14, 'ARITY_MISMATCH') :- !.
+db_error(15, 'PREDNAME_MISMATCH') :- !.
+db_error(16, 'INVALID_INDEXON ') :- !.
+db_error(17, 'CANNOT_DELETE') :- !.
+db_error(18, 'TRANS_ERROR') :- !.
+db_error(19, 'NOT_MCM_MODE') :- !.
+db_error(20, 'NO_VALUE') :- !.
+db_error(_, 'UNKNOWN ERROR') 			:- !.
+
 
 print_error(ECode) :- ECode \== 0, db_error(ECode, Message), write('[ERROR] '), writeln(Message).
 
