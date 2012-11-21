@@ -148,7 +148,6 @@ scan_triples_block([B]) --> scan_white_space, triples_same_subject(B), scan_whit
 scan_triples_block([B]) --> scan_white_space, triples_same_subject(B), dot.
 scan_triples_block([B|L]) --> scan_white_space, triples_same_subject(B), dot, scan_triples_block(L), scan_white_space.
 
-
 % [22]  	GraphPatternNotTriples	  ::=  	OptionalGraphPattern | GroupOrUnionGraphPattern | GraphGraphPattern
 graph_pattern_not_triples(P) --> optional_graph_pattern(P).
 graph_pattern_not_triples(P) --> group_or_union_graph_pattern(P).
@@ -237,16 +236,16 @@ graph_node(X) --> triples_node(X).
 var_or_term(var(X)) --> var(X).
 var_or_term(X) --> graph_term(X).
 
-% [43]  	VarOrIRIref	  ::=  	Var | IRIref
-var_or_iri_ref(var(X)) --> var(X).
-var_or_iri_ref(iri_ref(X)) --> iri_ref(X).
+% [107]  	VarOrIri	  ::=  	Var | iri
+var_or_iri(var(X)) --> var(X).
+var_or_iri(iri(X)) --> iri(X).
 
 % [44]  	Var	  ::=  	VAR1 | VAR2
 var(V) --> var1(V).
 var(V) --> var2(V).
 
-% [45]  	GraphTerm	  ::=  	IRIref |	RDFLiteral |	NumericLiteral |	BooleanLiteral |	BlankNode |	NIL
-graph_term(T) --> iri_ref(T).
+% [109]  	GraphTerm	  ::=  	iri |		RDFLiteral |	NumericLiteral |	BooleanLiteral |	BlankNode |	NIL
+graph_term(T) --> iri(T).
 graph_term(T) --> rdf_literal(T).
 graph_term(T) --> numeric_literal(T).
 graph_term(T) --> boolean_literal(T).
@@ -298,9 +297,95 @@ scan_value_logical(L) --> "&", "&", value_logical(L).
 scan_value_logical([]) --> {true}.
 
 % [49]  	ValueLogical	  ::=  	RelationalExpression
-value_logical(L) --> relational_expression(L).
+value_logical(L) --> scan_white_space, relational_expression(L).
 
-% [50]  	RelationalExpression	  ::=  	NumericExpression ( '=' NumericExpression | '!=' NumericExpression | '<' NumericExpression | '>' NumericExpression | '<=' NumericExpression | '>=' NumericExpression )?
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% [83]  	PropertyListPathNotEmpty	  ::=  	( VerbPath | VerbSimple ) ObjectListPath ( ';' ( ( VerbPath | VerbSimple ) ObjectList )? )*
+
+
+% [84]  	VerbPath	  ::=  	Path
+verb_path(P) --> path(P).
+
+% [85]  	VerbSimple	  ::=  	Var
+verb_simple(V) --> scan_white_space, var(V).
+
+% [86]  	ObjectListPath	  ::=  	ObjectPath ( ',' ObjectPath )*
+object_list_path([P1|P]) --> object_path(P1), scan_object_path(P).
+
+scan_object_path([P1|P]) --> comma, object_path(P1), scan_object_path(P).
+scan_object_path([]) --> {true}.
+
+% [87]  	ObjectPath	  ::=  	GraphNodePath
+object_path(P) --> graph_node_path(P).
+
+% [88]  	Path	  ::=  	PathAlternative
+path(P) --> path_alternative(P).
+
+% [89]  	PathAlternative	  ::=  	PathSequence ( '|' PathSequence )*
+path_alternative([S1|S]) --> path_sequence(S1), scan_path_alternative(S).
+
+scan_path_alternative([S1|S]) --> scan_white_space, "|", scan_white_space, path_sequence(S1), scan_path_sequence(S).
+scan_path_alternative([]) --> {true}.
+
+% [90]  	PathSequence	  ::=  	PathEltOrInverse ( '/' PathEltOrInverse )*
+path_sequence([S1|S]) --> path_elt_or_inverse(S1), scan_path_sequence(S).
+
+scan_path_sequence([S1|S]) --> scan_white_space, "/", scan_white_space, path_elt_or_inverse(S1), scan_path_sequence(S).
+scan_path_sequence([]) --> {true}.
+
+% [91]  	PathElt	  ::=  	PathPrimary PathMod?
+path_elt(elt(Path,Mod)) --> path_primary(Path), path_mod(Mod).
+path_elt(elt(Path,[])) --> path_primary(Path).
+
+% [92]  	PathEltOrInverse	  ::=  	PathElt | '^' PathElt
+path_elt_or_inverse(P) --> scan_white_space, path_elt(P).
+path_elt_or_inverse(inv(P)) --> scan_white_space, "^", path_elt(P).
+
+% [93]  	PathMod	  ::=  	'?' | '*' | '+'
+path_mod("?") --> scan_white_space, "?".
+path_mod("*") --> scan_white_space, "*".
+path_mod("+") --> scan_white_space, "+".
+
+% [94]  	PathPrimary	  ::=  	iri | 'a' | '!' PathNegatedPropertySet | '(' Path ')'
+path_primary(P) --> scan_white_space, iri(P).
+path_primary(a) --> scan_white_space, "a".
+path_primary(not(P)) --> scan_white_space, "!", path_negated_property_set(P).
+path_primary(P) --> open_paren, path(P), close_paren.
+
+% [95]  	PathNegatedPropertySet	  ::=  	PathOneInPropertySet | '(' ( PathOneInPropertySet ( '|' PathOneInPropertySet )* )? ')'
+path_negated_property_set(S) --> scan_white_space, path_one_in_property_set(S).
+path_negated_property_set([]) --> open_paren, close_paren.
+path_negated_property_set([S1|S]) --> open_paren, path_one_in_property_set(S1), scan_white_space, scan_path_one_in(S), close_paren.
+
+scan_path_one_in([]) --> {true}.
+scan_path_one_in([S|S2]) --> scan_white_space, "|", scan_white_space, path_one_in_property_set(S), scan_white_space, scan_path_one_in(S2).
+
+% [96]  	PathOneInPropertySet	  ::=  	iri | 'a' | '^' ( iri | 'a' )
+path_one_in_property_set(iri(R)) --> scan_white_space, iri(R).
+path_one_in_property_set(a) --> scan_white_space, "a".
+path_one_in_property_set(caret_iri(R)) --> scan_white_space, "^", iri(R).
+path_one_in_property_set(caret_a) --> scan_white_space, "^", "a".
+
+% [100]  	TriplesNodePath	  ::=  	CollectionPath |	BlankNodePropertyListPath
+triples_node_path(P) --> scan_white_space, collection_path(P).
+triples_node_path(P) --> scan_white_space, blank_node_property_list_path(P).
+
+% [101]  	BlankNodePropertyListPath	  ::=  	'[' PropertyListPathNotEmpty ']'
+blank_node_property_list_path(P) --> open_square_bracket, property_list_path_not_empty(P), close_square_bracket.
+
+% [103]  	CollectionPath	  ::=  	'(' GraphNodePath+ ')'
+collection_path([P1|P]) --> open_paren, graph_node_path(P1), scan_graph_node_path(P), close_paren.
+
+scan_graph_node_path([]) --> {true}.
+scan_graph_node_path([P|Pl]) --> scan_white_space, graph_node_path(P), scan_graph_node_path(Pl).
+
+% [105]  	GraphNodePath	  ::=  	VarOrTerm |	TriplesNodePath
+graph_node_path(V) --> scan_white_space, var_or_term(V).
+graph_node_path(V) --> scan_white_space, triples_node_path(V).
+
+% [114]  	RelationalExpression	  ::=  	NumericExpression ( '=' NumericExpression | '!=' NumericExpression | '<' NumericExpression | '>' NumericExpression | '<=' NumericExpression | '>=' NumericExpression | 'IN' ExpressionList | 'NOT' 'IN' ExpressionList )?
 relational_expression(L) --> scan_white_space, numeric_expression(L).
 relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, "=", 		scan_white_space, numeric_expression(L2), { L = eq(L1, L2) 		}.
 relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, "!", "=", 	scan_white_space, numeric_expression(L2), { L = neq(L1, L2) 	}.
@@ -308,11 +393,16 @@ relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_whit
 relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, ">", 		scan_white_space, numeric_expression(L2), { L = gt(L1, L2) 		}.
 relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, "<", "=", 	scan_white_space, numeric_expression(L2), { L = lte(L1, L2) 	}.
 relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, ">", "=", 	scan_white_space, numeric_expression(L2), { L = gte(L1, L2) 	}.
+relational_expression(L) --> scan_white_space, numeric_expression(L1), scan_white_space, "I", "N",  scan_white_space, expression_list(EL), 	  { L = in(L1, EL)		}.
+relational_expression(L) --> 
+					scan_white_space, numeric_expression(L1), scan_white_space, 
+					"N", "O", "T", scan_white_space, "I", "N",  scan_white_space, 
+					expression_list(EL), { L = notin(L1, EL) }.
 
 % [51]  	NumericExpression	  ::=  	AdditiveExpression
 numeric_expression(E) --> additive_expression(E).
 
-% [52]  	AdditiveExpression	  ::=  	MultiplicativeExpression ( '+' MultiplicativeExpression | '-' MultiplicativeExpression | NumericLiteralPositive | NumericLiteralNegative )*
+% [116]  	AdditiveExpression	  ::=  	MultiplicativeExpression ( '+' MultiplicativeExpression | '-' MultiplicativeExpression | ( NumericLiteralPositive | NumericLiteralNegative ) ( ( '*' UnaryExpression ) | ( '/' UnaryExpression ) )* )*
 additive_expression(E) 				--> multiplicative_expression(E).
 additive_expression(E) 				--> multiplicative_expression(E1), "+", scan_multiplicative_expression(E2), 	{ E = plus(E1, E2) 	}.
 additive_expression(E) 				--> multiplicative_expression(E1), "-", scan_multiplicative_expression(E2), 	{ E = minus(E1, E2) }.
@@ -320,10 +410,14 @@ additive_expression(E) 				--> multiplicative_expression(E1), "-", scan_multipli
 scan_multiplicative_expression(E) --> multiplicative_expression(E).
 scan_multiplicative_expression(E) --> numeric_literal_positive(E).
 scan_multiplicative_expression(E) --> numeric_literal_negative(E).
-scan_multiplicative_expression(E) --> multiplicative_expression(E1), "+", scan_multiplicative_expression(E2), 	{ E = plus(E1, E2) }.
-scan_multiplicative_expression(E) --> multiplicative_expression(E1), "-", scan_multiplicative_expression(E2), 	{ E = minus(E1, E2) }.
-scan_multiplicative_expression(E) --> numeric_literal_positive(E1), scan_multiplicative_expression(E2), 		{ E = plus(E1, E2) }.
-scan_multiplicative_expression(E) --> numeric_literal_negative(E1), scan_multiplicative_expression(E2), 		{ E = plus(E1, E2) }.
+scan_multiplicative_expression(E) --> numeric_literal_positive(E1),  "*", scan_unary_expression(E2), 			{ E = times(E1, E2) 	}.
+scan_multiplicative_expression(E) --> numeric_literal_negative(E1),  "*", scan_unary_expression(E2), 			{ E = times(E1, E2) 	}.
+scan_multiplicative_expression(E) --> numeric_literal_positive(E1),  "/", scan_unary_expression(E2), 			{ E = divide(E1, E2) 	}.
+scan_multiplicative_expression(E) --> numeric_literal_negative(E1),  "/", scan_unary_expression(E2), 			{ E = divide(E1, E2) 	}.
+scan_multiplicative_expression(E) --> multiplicative_expression(E1), "+", scan_multiplicative_expression(E2), 	{ E = plus(E1, E2)	 	}.
+scan_multiplicative_expression(E) --> multiplicative_expression(E1), "-", scan_multiplicative_expression(E2), 	{ E = minus(E1, E2) 	}.
+scan_multiplicative_expression(E) --> numeric_literal_positive(E1), scan_multiplicative_expression(E2), 		{ E = plus(E1, E2) 		}.
+scan_multiplicative_expression(E) --> numeric_literal_negative(E1), scan_multiplicative_expression(E2), 		{ E = plus(E1, E2) 		}.
 
 % [53]  	MultiplicativeExpression	  ::=  	UnaryExpression ( '*' UnaryExpression | '/' UnaryExpression )*
 multiplicative_expression(E) --> scan_unary_expression(E).
@@ -341,10 +435,10 @@ unary_expression(plus(E))  	--> "+", primary_expression(E).
 unary_expression(minus(E)) 	--> "-", primary_expression(E).
 unary_expression(E) 		--> 	 primary_expression(E).
 
-% [55]  	PrimaryExpression	  ::=  	BrackettedExpression | BuiltInCall | IRIrefOrFunction | RDFLiteral | NumericLiteral | BooleanLiteral | Var
+% [119]  	PrimaryExpression	  ::=  	BrackettedExpression | BuiltInCall | iriOrFunction | RDFLiteral | NumericLiteral | BooleanLiteral | Var
 primary_expression(X) --> bracketted_expression(X).
 primary_expression(X) --> built_in_call(X).
-primary_expression(X) --> iri_ref_or_function(X).
+primary_expression(X) --> iri_or_function(X).
 primary_expression(X) --> rdf_literal(X).
 primary_expression(X) --> numeric_literal(X).
 primary_expression(X) --> boolean_literal(X).
@@ -353,40 +447,210 @@ primary_expression(X) --> var(X).
 % [56]  	BrackettedExpression	  ::=  	'(' Expression ')'
 bracketted_expression((X)) --> open_paren, expression(X), close_paren.
 
-% [57]  	BuiltInCall	  ::=  	  'STR' '(' Expression ')' 
-% 					|	'LANG' '(' Expression ')' 
-% 					|	'LANGMATCHES' '(' Expression ',' Expression ')' 
-% 					|	'DATATYPE' '(' Expression ')' 
-% 					|	'BOUND' '(' Var ')' 
-% 					|	'sameTerm' '(' Expression ',' Expression ')' 
-% 					|	'isIRI' '(' Expression ')' 
-% 					|	'isURI' '(' Expression ')' 
-% 					|	'isBLANK' '(' Expression ')' 
-% 					|	'isLITERAL' '(' Expression ')' 
-% 					|	RegexExpression
+% [121]  	BuiltInCall	  ::=  	  Aggregate 
+% 				|	'STR' '(' Expression ')' 
 built_in_call(builtin(str, E)) --> "S", "T", "R", open_paren, expression(E), close_paren.
-built_in_call(builtin(lang,E)) --> "L", "A", "N", "G", open_paren, expression(E), close_paren.
+% 				|	'LANG' '(' Expression ')'
+built_in_call(builtin(lang,E)) --> "L", "A", "N", "G", open_paren, expression(E), close_paren. 
+% 				|	'LANGMATCHES' '(' Expression ',' Expression ')' 
 built_in_call(builtin(langmatches,E)) --> "L", "A", "N", "G", "M", "A", "T", "C", "H", "E", "S", open_paren, expression(E), close_paren.
+% 				|	'DATATYPE' '(' Expression ')' 
 built_in_call(builtin(datatype,E)) --> "D", "A", "T", "A", "T", "Y", "P", "E", open_paren, expression(E), close_paren.
+% 				|	'BOUND' '(' Var ')' 
 built_in_call(builtin(bound,E)) --> "B", "O", "U", "N", "D", open_paren, expression(E), close_paren.
+% 				|	'IRI' '(' Expression ')' 
+built_in_call(builtin(iri, E)) --> "I","R","I", open_paren, expression(E), close_paren.
+% 				|	'URI' '(' Expression ')' 
+built_in_call(builtin(uri, E)) --> "U","R","I", open_paren, expression(E), close_paren.
+% 				|	'BNODE' ( '(' Expression ')' | NIL ) 
+built_in_call(builtin(bnode, '')) --> "B", "N", "O", "D", "E", nil.
+built_in_call(builtin(bnode, E)) --> "B", "N", "O", "D", "E", open_paren, expression(E), close_paren.
+% 				|	'RAND' NIL 
+built_in_call(builtin(rand)) --> "R", "A", "N", "D", nil.
+% 				|	'ABS' '(' Expression ')' 
+built_in_call(builtin(abs, E)) -->  "A", "B", "S", open_paren, expression(E), close_paren.
+% 				|	'CEIL' '(' Expression ')' 
+built_in_call(builtin(ceil, E)) -->  "C", "E", "I", "L", open_paren, expression(E), close_paren.
+% 				|	'FLOOR' '(' Expression ')' 
+built_in_call(builtin(floor, E)) -->  "F", "L", "O", "O", "R", open_paren, expression(E), close_paren.
+% 				|	'ROUND' '(' Expression ')' 
+built_in_call(builtin(round, E)) -->  "R", "O", "U", "N", "D", open_paren, expression(E), close_paren.
+% 				|	'CONCAT' ExpressionList 
+built_in_call(builtin(concat,EL)) --> "C", "O", "N", "C", "A", "T", expression_list(EL).
+% 				|	SubstringExpression 
+built_in_call(builtin(substring, [E1, E2, E3])) -->  substring_expression(E1, E2, E3).
+% 				|	'STRLEN' '(' Expression ')' 
+built_in_call(builtin(strlen, E)) -->  "S", "T", "R", "L", "E", "N", open_paren, expression(E), close_paren.
+% 				|	StrReplaceExpression 
+built_in_call(builtin(strreplace, [E1, E2, E3, E4])) -->  str_replace_expression(E1, E2, E3, E4).
+% 				|	'UCASE' '(' Expression ')' 
+built_in_call(builtin(ucase, E)) -->  "U", "C", "A", "S", "E", open_paren, expression(E), close_paren.
+% 				|	'LCASE' '(' Expression ')' 
+built_in_call(builtin(lcase, E)) -->  "L", "C", "A", "S", "E", open_paren, expression(E), close_paren.
+% 				|	'ENCODE_FOR_URI' '(' Expression ')' 
+built_in_call(builtin(encode_for_uri, E)) -->  "E", "N", "C", "O", "D", "E", "_", "F", "O", "R", "_", "U", "R", "I", open_paren, expression(E), close_paren.
+% 				|	'CONTAINS' '(' Expression ',' Expression ')' 
+built_in_call(builtin(contains, [E1,E2])) --> "C", "O", "N", "T", "A", "I", "N", "S", open_paren, expression(E1), comma, expression(E2), close_paren.
+% 				|	'STRSTARTS' '(' Expression ',' Expression ')' 
+built_in_call(builtin(strstarts, [E1,E2])) --> "S", "T", "R", "S", "T", "A", "R", "T", "S", open_paren, expression(E1), comma, expression(E2), close_paren.
+% 				|	'STRENDS' '(' Expression ',' Expression ')' 
+built_in_call(builtin(strends, [E1,E2])) --> "S", "T", "R", "E", "N", "D", "S", open_paren, expression(E1), comma, expression(E2), close_paren.
+% 				|	'STRBEFORE' '(' Expression ',' Expression ')' 
+built_in_call(builtin(strbefore, [E1,E2])) --> "S", "T", "R", "B", "E", "F", "O", "R", "E", open_paren, expression(E1), comma, expression(E2), close_paren.
+% 				|	'STRAFTER' '(' Expression ',' Expression ')' 
+built_in_call(builtin(strafter, [E1,E2])) --> "S", "T", "R", "A", "F", "T", "E", "R", open_paren, expression(E1), comma, expression(E2), close_paren.
+% 				|	'YEAR' '(' Expression ')' 
+built_in_call(builtin(yea, E)) --> "Y", "E", "A", "R", open_paren, expression(E), close_paren.
+% 				|	'MONTH' '(' Expression ')' 
+built_in_call(builtin(month, E)) --> "M", "O", "N", "T", "H", open_paren, expression(E), close_paren.
+% 				|	'DAY' '(' Expression ')' 
+built_in_call(builtin(day, E)) --> "D", "A", "Y", open_paren, expression(E), close_paren.
+% 				|	'HOURS' '(' Expression ')' 
+built_in_call(builtin(hours, E)) --> "H", "O", "U", "R", "S", open_paren, expression(E), close_paren.
+% 				|	'MINUTES' '(' Expression ')' 
+built_in_call(builtin(minutes, E)) --> "M" ,"I" ,"N" ,"U" ,"T" ,"E" ,"S", open_paren, expression(E), close_paren.
+% 				|	'SECONDS' '(' Expression ')' 
+built_in_call(builtin(seconds, E)) --> "S", "E", "C", "O", "N", "D", "S", open_paren, expression(E), close_paren.
+% 				|	'TIMEZONE' '(' Expression ')' 
+built_in_call(builtin(timezone, E)) --> "T", "I", "M", "E", "Z", "O", "N", "E", open_paren, expression(E), close_paren.
+% 				|	'TZ' '(' Expression ')' 
+built_in_call(builtin(tz, E)) --> "T", "Z", open_paren, expression(E), close_paren.
+% 				|	'NOW' NIL 
+built_in_call(builtin(now)) --> "N", "O", "W", nil.
+% 				|	'UUID' NIL 
+built_in_call(builtin(uuid)) --> "U", "U", "I", "D", nil.
+% 				|	'STRUUID' NIL 
+built_in_call(builtin(struuid)) --> "S", "T", "R", "U", "U", "I", "D", nil.
+% 				|	'MD5' '(' Expression ')' 
+built_in_call(builtin(md5,E)) --> "M", "D", "5", open_paren, expression(E), close_paren.
+% 				|	'SHA1' '(' Expression ')' 
+built_in_call(builtin(sha1,E)) --> "S", "H", "A", "1", open_paren, expression(E), close_paren.
+% 				|	'SHA256' '(' Expression ')' 
+built_in_call(builtin(sha256,E)) --> "S", "H", "A", "2", "5", "6", open_paren, expression(E), close_paren.
+% 				|	'SHA384' '(' Expression ')' 
+built_in_call(builtin(sha384,E)) --> "S", "H", "A", "3", "8", "4", open_paren, expression(E), close_paren.
+% 				|	'SHA512' '(' Expression ')' 
+built_in_call(builtin(sha512,E)) --> "S", "H", "A", "5", "1", "2", open_paren, expression(E), close_paren.
+% 				|	'COALESCE' ExpressionList 
+built_in_call(builtin(coalesce,EL)) --> "C", "O", "A", "L", "E", "S", "C", "E", expression_list(EL).
+% 				|	'IF' '(' Expression ',' Expression ',' Expression ')' 
+built_in_call(builtin(if,[Condition,Expression,Else])) --> 
+	"I", "F", open_paren, 
+		expression(Condition), comma, 
+		expression(Expression), comma, 
+		expression(Else), 
+	close_paren.
+% 				|	'STRLANG' '(' Expression ',' Expression ')' 
+built_in_call(builtin(strlang,[E1,E2])) --> "S", "T", "R", "L", "A", "N", "G", open_paren, expression(E1), comma, expression(E2), close_paren.
+% 				|	'STRDT' '(' Expression ',' Expression ')' 
+built_in_call(builtin(strdt,[E1,E2])) --> "S", "T", "R", "D", "T", open_paren, expression(E1), comma, expression(E2), close_paren.
+% 				|	'sameTerm' '(' Expression ',' Expression ')' 
 built_in_call(builtin(sameterm,E)) --> "s", "a", "m", "e", "T", "e", "r", "m", open_paren, expression(E), close_paren.
+% 				|	'isIRI' '(' Expression ')' 
 built_in_call(builtin(is_iri, E)) --> "i", "s", "I", "R", "I", open_paren, expression(E), close_paren.
+% 				|	'isURI' '(' Expression ')' 
 built_in_call(builtin(is_uri, E)) --> "i", "s", "U", "R", "I", open_paren, expression(E), close_paren.
+% 				|	'isBLANK' '(' Expression ')' 
 built_in_call(builtin(is_blank, E)) --> "i", "s", "B", "L", "A", "N", "K", open_paren, expression(E), close_paren.
-built_in_call(builtin(is_literall, E)) --> "i", "s", "L", "I", "T", "E", "R", "A", "L", open_paren, expression(E), close_paren.
+% 				|	'isLITERAL' '(' Expression ')' 
+built_in_call(builtin(is_literal, E)) --> "i", "s", "L", "I", "T", "E", "R", "A", "L", open_paren, expression(E), close_paren.
+% 				|	'isNUMERIC' '(' Expression ')' 
+built_in_call(builtin(is_numeric, E)) --> "i", "s", "N", "U", "M", "E", "R", "I", "C", open_paren, expression(E), close_paren.
+% 				|	RegexExpression 
 built_in_call(builtin(regex, E)) --> regex_expression(E).
+% 				|	ExistsFunc 
+built_in_call(builtin(exists, E)) --> exists_func(E).
+% 				|	NotExistsFunc
+built_in_call(builtin(not_exists, E)) --> not_exists_func(E).
 
 % [58]  	RegexExpression	  ::=  	'REGEX' '(' Expression ',' Expression ( ',' Expression )? ')'
 regex_expression(regex([X1, X2])) --> "R", "E", "G", "E", "X", open_paren, expression(X1), comma, expression(X2), close_paren.
 regex_expression(regex([X1, X2, X3])) --> "R", "E", "G", "E", "X", open_paren, expression(X1), comma, expression(X2), comma, expression(X3), close_paren.
 
-% [59]  	IRIrefOrFunction	  ::=  	IRIref ArgList?
-iri_ref_or_function(F) --> iri_ref(F1), arg_list(Args), { F = function(F1, Args) }.
-iri_ref_or_function(F) --> iri_ref(F1), { F = iri_ref(F1) }.
+% [123]  	SubstringExpression	  ::=  	'SUBSTR' '(' Expression ',' Expression ( ',' Expression )? ')'
+substring_expression(Exp1, Exp2, Exp3) --> 
+	scan_white_space, "S", "U", "B", "S", "T", "R", open_paren,
+	expression(Exp1), comma, expression(Exp2), comma, expression(Exp3), close_paren, {!}.
 
-% [60]  	RDFLiteral	  ::=  	String ( LANGTAG | ( '^^' IRIref ) )?
+substring_expression(Exp1, Exp2, '') --> 
+	scan_white_space, "S", "U", "B", "S", "T", "R", open_paren,
+	expression(Exp1), comma, expression(Exp2), close_paren, {!}.
+
+% [124]  	StrReplaceExpression	  ::=  	'REPLACE' '(' Expression ',' Expression ',' Expression ( ',' Expression )? ')'
+str_replace_expression(Exp1, Exp2, Exp3, Exp4) --> 
+	scan_white_space, "R", "E", "P", "L", "A", "C", "E", open_paren,
+	expression(Exp1), comma, expression(Exp2), comma, expression(Exp3), comma, expression(Exp4), close_paren, {!}.
+
+str_replace_expression(Exp1, Exp2, Exp3, '') --> 
+	scan_white_space, "R", "E", "P", "L", "A", "C", "E", open_paren,
+	expression(Exp1), comma, expression(Exp2), comma, expression(Exp3), close_paren.
+
+% [125]  	ExistsFunc	  ::=  	'EXISTS' GroupGraphPattern
+exists_func(GGP) --> scan_white_space, "E", "X", "I", "S", "T", "S", scan_white_space, group_graph_pattern(GGP).
+
+% [126]  	NotExistsFunc	  ::=  	'NOT' 'EXISTS' GroupGraphPattern
+not_exists_func(GGP) --> scan_white_space, "N", "O", "T", scan_white_space, "E", "X", "I", "S", "T", "S", scan_white_space, group_graph_pattern(GGP).
+
+% [127]  	Aggregate	  ::=  	  
+% 		'COUNT' '(' 'DISTINCT'? ( '*' | Expression ) ')' 
+aggregate(count, D, Op) --> 
+	"C","O","U","N","T", open_paren, 
+	distinct_or_not(D),
+	expression_or_star(Op), close_paren.
+%		| 'SUM' '(' 'DISTINCT'? Expression ')' 
+aggregate(sum, D, Op) --> 
+	"S", "U", "M", open_paren, 
+	distinct_or_not(D),
+	expression(Op), close_paren.
+%		| 'MIN' '(' 'DISTINCT'? Expression ')' 
+aggregate(min, D, Op) --> 
+	"M", "I", "N", open_paren, 
+	distinct_or_not(D),
+	expression(Op), close_paren.
+%		| 'MAX' '(' 'DISTINCT'? Expression ')' 
+aggregate(max, D, Op) --> 
+	"M", "A", "X", open_paren, 
+	distinct_or_not(D),
+	expression(Op), close_paren.
+%		| 'AVG' '(' 'DISTINCT'? Expression ')' 
+aggregate(avg, D, Op) --> 
+	"A","V", "G", open_paren, 
+	distinct_or_not(D),
+	expression(Op), close_paren.
+%		| 'SAMPLE' '(' 'DISTINCT'? Expression ')' 
+aggregate(sample, D, Op) --> 
+	"S","A","M","P","L","E", open_paren, 
+	distinct_or_not(D),
+	expression(Op), close_paren.
+%		| 'GROUP_CONCAT' '(' 'DISTINCT'? Expression ( ';' 'SEPARATOR' '=' String )? ')'
+aggregate(group_concat(Sep), D, Op) --> 
+	"S","A","M","P","L","E", open_paren, 
+	distinct_or_not(D),
+	expression(Op), 
+	scan_white_space, ";", scan_white_space,
+	"S", "E", "P", "A", "R", "A", "T", "O", "R",
+	scan_white_space, "=", scan_white_space,
+	string(Sep), 
+	close_paren.
+
+aggregate(group_concat(), D, Op) --> 
+	"S","A","M","P","L","E", open_paren, 
+	distinct_or_not(D),
+	expression(Op), 
+	close_paren.
+ 
+distinct_or_not(distinct) --> "D", "I", "S", "T", "I", "N", "C", "T", scan_white_space, { ! }.
+distinct_or_not(all) --> {true, !}.
+expression_or_star(all) --> "*".
+expression_or_star(E) --> expression(E).
+
+% [128]  	iriOrFunction	  ::=  	iri ArgList?
+iri_or_function(F) --> iri(F1), arg_list(Args), { F = function(F1, Args) }.
+iri_or_function(F) --> iri(F1), { F = iri(F1) }.
+
+% [129]  	RDFLiteral	  ::=  	String ( LANGTAG | ( '^^' iri ) )?
 rdf_literal(rdf_lit(String, lang(L))) --> string(String), langtag(L).
-rdf_literal(rdf_lit(String, iri_ref(L))) --> string(String), "^", "^", iri_ref(L).
+rdf_literal(rdf_lit(String, iri(L))) --> string(String), "^", "^", iri(L).
 rdf_literal(rdf_lit(String, '')) --> string(String).
 
 % [61]  	NumericLiteral	  ::=  	NumericLiteralUnsigned | NumericLiteralPositive | NumericLiteralNegative
@@ -422,9 +686,9 @@ string(S) --> string_literal2(S).
 string(S) --> string_literal_long1(S).
 string(S) --> string_literal_long2(S).
 
-% [67]  	IRIref	  ::=  	IRI_REF |	PrefixedName
-iri_ref(Ref) --> iri_ref_terminal(Ref).
-iri_ref(Ref) --> prefixed_name(Ref).
+% [136]  	iri	  	  ::=  	IRIREF  |	PrefixedName
+iri(Ref) --> iri_ref_terminal(Ref).
+iri(Ref) --> prefixed_name(Ref).
 
 % [68]  	PrefixedName	  ::=  	PNAME_LN | PNAME_NS
 prefixed_name(ln(LN, S)) 	--> pname_ln(LN, S).
@@ -458,9 +722,16 @@ pname_ns(V) --> pn_prefix(V), ":".
 
 % [72]  	PNAME_LN	  ::=  	PNAME_NS PN_LOCAL
 pname_ln(NS,L) --> pname_ns(NS), pn_local(L). 
+	
+% [142]  	BLANK_NODE_LABEL	  ::=  	'_:' ( PN_CHARS_U | [0-9] ) ((PN_CHARS|'.')* PN_CHARS)?
+blank_node_label(B) --> "_", ":", pn_chars_u(B).
+blank_node_label(B) --> "_", ":", [B], { B @>= 0, B @=< 9 }.
+blank_node_label(B) --> "_", ":", pn_chars_u(B1), scan_blank_node_label(B2), { string:concat_atom([B1,B2], B) }.
+blank_node_label(B) --> "_", ":", [B1], { B1 @>= 0, B1 @=< 9 }, scan_blank_node_label(B2), { string:concat_atom([B1,B2], B) }.
 
-% [73]  	BLANK_NODE_LABEL	  ::=  	'_:' PN_LOCAL
-blank_node_label(B) --> "_", ":", pn_local(B).
+scan_blank_node_label(B) --> pn_chars(B).
+scan_blank_node_label(B) --> pn_chars(B1), scan_blank_node_label(B2), { string:concat_atom([B1,B2], B) }.
+scan_blank_node_label(B) --> ".", scan_blank_node_label(B2), { string:concat_atom(['.',B2], B) }.
 
 % [74]  	VAR1	  ::=  	'?' VARNAME
 var1(V) --> "?", varname(V).
@@ -760,17 +1031,67 @@ pn_prefix_scan([]) 		--> {true}.
 pn_prefix_scan([C1|C]) 	--> pn_chars(C1), pn_prefix_scan(C). % PN_CHARS
 pn_prefix_scan(['.'|C]) --> ".", pn_prefix_scan(C). 		% .
 
-% [100]  	PN_LOCAL	  ::=  	( PN_CHARS_U | [0-9] ) ((PN_CHARS|'.')* PN_CHARS)?
+% [169]  	PN_LOCAL	  ::=  	( PN_CHARS_U | ':' | [0-9] | PLX ) ((PN_CHARS | '.' | ':' | PLX)* (PN_CHARS | ':' | PLX) )?
 pn_local(V) --> 
-	( pn_chars_u(C1) ; [C1a], { C1a @>=0'0, C1a @=< 0'9, atom_codes(C1, [C1a]) } ),  % ( PN_CHARS_U | [0-9] )
+	( 
+		pn_chars_u(C1) 
+		; ( [C1a],  { C1a @>=0'0, C1a @=< 0'9, atom_codes(C1, [C1a] ) }  )
+		; ( ":", { C1 = ":" } )
+		; plx(C1)
+	),
 	(
-		(									% ((PN_CHARS|'.')* PN_CHARS)?
-			pn_prefix_scan(C3),
-			pn_chars(C4),
-			{ lists:append(C3, [C4], C2) }
-		) ; 
-		{ C2 = [] }
-	), { string:concat_atom([C1|C2], V) }.
+		pn_local_scan(C2)
+		; { C2 = [] }
+	), 
+	(
+		pn_chars_u(C3) 
+		; ( [C3a],  { C3a @>=0'0, C3a @=< 0'9, atom_codes(C3, [C3a] ) }  )
+		; ( ":", { C3 = ":" } )
+		; plx(C3)
+		; { C3 = [] }
+	),
+	{ string:concat_atom([C1|[C2|C3]], V) }.
+
+pn_local_scan([]) --> {true}.
+pn_local_scan([C|S]) --> pn_chars(C), pn_local_scan(S).
+pn_local_scan(["."|S]) --> ".", pn_local_scan(S).
+pn_local_scan([":"|S]) --> ":", pn_local_scan(S).
+pn_local_scan([C|S]) --> plx(C), pn_local_scan(S).
+
+
+% [170]  	PLX	  ::=  	PERCENT | PN_LOCAL_ESC
+plx(P) --> percent(P).
+plx(P) --> pn_local_esc(P).
+
+% [171]  	PERCENT	  ::=  	'%' HEX HEX
+percent(P) --> "%", hex(P1), hex(P2), { number_codes(P, [P1|[P2]]) }.
+
+% [172]  	HEX	  ::=  	[0-9] | [A-F] | [a-f]
+hex(V) --> [V], {V @>= 0'0, V @=< 0'9}.
+hex(V) --> [V], {V @>= "A", V @=< "F"}.
+hex(V) --> [V], {V @>= "a", V @=< "f"}.
+
+% [173]  	PN_LOCAL_ESC	  ::=  	'\' ( '_' | '~' | '.' | '-' | '!' | '$' | '&' | "'" | '(' | ')' | '*' | '+' | ',' | ';' | '=' | '/' | '?' | '#' | '@' | '%' )
+pn_local_esc("_") --> "\\", "_".
+pn_local_esc("~") --> "\\", "~".
+pn_local_esc(".") --> "\\", ".".
+pn_local_esc("-") --> "\\", "-".
+pn_local_esc("!") --> "\\", "!".
+pn_local_esc("$") --> "\\", "$".
+pn_local_esc("&") --> "\\", "&".
+pn_local_esc("'") --> "\\", "'".
+pn_local_esc("(") --> "\\", "(".
+pn_local_esc(")") --> "\\", ")".
+pn_local_esc("*") --> "\\", "*".
+pn_local_esc("+") --> "\\", "+".
+pn_local_esc(",") --> "\\", ",".
+pn_local_esc(";") --> "\\", ";".
+pn_local_esc("=") --> "\\", "=".
+pn_local_esc("/") --> "\\", "/".
+pn_local_esc("?") --> "\\", "?".
+pn_local_esc("#") --> "\\", "#".
+pn_local_esc("@") --> "\\", "@".
+pn_local_esc("%") --> "\\", "%".
 
 %% allow spaces inbetween parenthesis
 open_paren() --> "(", scan_white_space.
