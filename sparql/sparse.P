@@ -1,88 +1,124 @@
 :- import append/3 from basics.
 :- import scan_file/2 from scanner.
-:- export parse_file/2, test/1, test2/1, test3/1, test4/1.
+:- export query_unit/1, parse_file/2, test/1, test2/1, test3/1, test4/1.
 :- auto_table.
 
 parse_file(ProgramFile,AST) :-
     scan_file(ProgramFile,_Length),
     test(AST, 0, _Length).
 
-%test(AST) --> query(AST).
+test(Vars) --> query_unit(Vars).
 
-test(Vars) --> query(Vars).
+% [1]  	QueryUnit	  ::=  	Query
+query_unit(U) --> query(U), !.
 
-% [1]  	Query	  ::=  	Prologue
-% ( SelectQuery | ConstructQuery | DescribeQuery | AskQuery )
-query(query(P,Q)) --> 
+% [1]  	Query	  ::=  	Prologue ( SelectQuery | ConstructQuery | DescribeQuery | AskQuery )
+% [2]  	Query	  ::=  	Prologue ( SelectQuery | ConstructQuery | DescribeQuery | AskQuery ) ValuesClause
+query(query(P,Q,CL)) --> 
 	scan_white_space, prologue(P), scan_white_space, 
 	( 
 		select_query(Q) ; 
 		construct_query(Q) ; 
 		describe_query(Q) ; 
 		ask_query(Q) 
-	), scan_white_space.
+	), scan_white_space, values_clause(CL).
+
+% [3]  	UpdateUnit	  ::=  	Update
+update_unit(U) --> update(U).
 
 % [2]  	Prologue	  ::=  	BaseDecl? PrefixDecl*
-prologue(prologue(Base,Prefixes)) --> base_decl(Base), scan_prefix_decl(Prefixes).
-prologue(prologue([],Prefixes)) --> scan_prefix_decl(Prefixes).
+% [4]  	Prologue	  ::=  	( BaseDecl | PrefixDecl )*
+prologue(P) --> scan_base_decl_or_prefix_decl(P).
 
-scan_prefix_decl([]) --> {true}.
-scan_prefix_decl([P|L]) --> prefix_decl(P), scan_white_space, scan_prefix_decl(L).
+scan_base_decl_or_prefix_decl([B|L]) --> 
+	base_decl(B),
+	scan_base_decl_or_prefix_decl(L).
+scan_base_decl_or_prefix_decl([B|L]) --> 
+	prefix_decl(B),
+	scan_base_decl_or_prefix_decl(L).
+scan_base_decl_or_prefix_decl([]) --> {true}.
 
 % [3]  	BaseDecl	  ::=  	'BASE' IRI_REF
-base_decl(base(Base)) --> "B", "A", "S", "E", scan_white_space, iri_ref(Base).
+% [5]  	BaseDecl	  ::=  	'BASE' IRIREF
+base_decl(base(Base)) --> "B", "A", "S", "E", scan_white_space, iri_ref_terminal(Base).
 
 % [4]  	PrefixDecl	  ::=  	'PREFIX' PNAME_NS IRI_REF
-prefix_decl(prefix(NS, IRI)) --> "P", "R", "E", "F", "I", "X", scan_white_space, pname_ns(NS), scan_white_space, iri_ref(IRI).
+% [6]  	PrefixDecl	  ::=  	'PREFIX' PNAME_NS IRIREF
+prefix_decl(prefix(NS, IRI)) --> "P", "R", "E", "F", "I", "X", scan_white_space, pname_ns(NS), scan_white_space, iri_ref_terminal(IRI).
 
 % [5]  		SelectQuery	  ::=  	'SELECT' ( 'DISTINCT' | 'REDUCED' )? ( Var+ | '*' ) DatasetClause* WhereClause SolutionModifier
-select_query(select_distinct(Vars, DatasetClauses, WhereClause, SolutionModifier)) -->
-	"S", "E", "L", "E", "C", "T", scan_white_space, "D", "I", "S", "T", "I", "N", "C", "T", scan_white_space,
-	( scan_var(Vars), { Vars \== [] } ; "*", {Vars = "*"}), scan_white_space,
-	scan_dataset_clauses(DatasetClauses), scan_white_space,
-	where_clause(WhereClause), scan_white_space,
-	solution_modifier(SolutionModifier), scan_white_space.
+% [7]  		SelectQuery	  ::=  	SelectClause DatasetClause* WhereClause SolutionModifier
+select_query(select(C,Clauses,W,M)) --> select_clause(C), scan_dataset_clauses(Clauses), where_clause(W), solution_modifier(M).
 
-select_query(select_reduced(Vars, DatasetClauses, WhereClause, SolutionModifier)) -->
-	"S", "E", "L", "E", "C", "T", scan_white_space, "R", "E", "D", "U", "C", "E", "D", scan_white_space,
-	( scan_var(Vars), { Vars \== [] } ; "*", {Vars = "*"}), scan_white_space,
-	scan_dataset_clauses(DatasetClauses), scan_white_space,
-	where_clause(WhereClause), scan_white_space,
-	solution_modifier(SolutionModifier), scan_white_space.
+% [8]  	SubSelect	  ::=  	SelectClause WhereClause SolutionModifier ValuesClause
+sub_select(subselect(S,W,SM,VC)) --> select_clause(S), where_clause(W), solution_modifier(SM), values_clause(VC).
 
-select_query(select(Vars, DatasetClauses, WhereClause, SolutionModifier)) --> 
-	"S", "E", "L", "E", "C", "T", scan_white_space,
-	( scan_var(Vars), { Vars \== [] } ; "*", {Vars = "*"}), scan_white_space,
-	scan_dataset_clauses(DatasetClauses), scan_white_space,
-	where_clause(WhereClause), scan_white_space,
-	solution_modifier(SolutionModifier), scan_white_space.
+% [9]  	SelectClause	  ::=  	'SELECT' ( 'DISTINCT' | 'REDUCED' )? ( ( Var | ( '(' Expression 'AS' Var ')' ) )+ | '*' )
+select_clause(select_clause(D, V)) --> 
+	scan_white_space, 
+	"S", "E", "L", "E", "C", "T", 
+	scan_white_space, 
+	distinct_or_reduced_or_not(D), 
+	( 
+		(
+			( 
+				var(V1) ; 
+				(
+					open_paren, expression(V1a), scan_white_space, "A", "S", scan_white_space, var(V1b), close_paren,
+					{ V1 = as(V1a,V1b) }
+				)
+			),
+			scan_var_or_expression(V2),
+			{ V = [V1|V2] }
+		)
+		; scan_white_space, "*", scan_white_space, {V = all} 
+	).
 
-scan_var([]) --> {true}.
-scan_var([V|L]) --> var(V), scan_white_space, scan_var(L).
+scan_var_or_expression([V|L]) --> scan_white_space, var(V), scan_var_or_expression(L).
+scan_var_or_expression([V|L]) --> open_paren, expression(V1a), scan_white_space, "A", "S", scan_white_space, var(V1b), close_paren, { V = as(V1a,V1b) }, scan_var_or_expression(L).
+scan_var_or_expression([]) --> {true}.
+
+distinct_or_reduced_or_not(distinct) --> "D", "I", "S", "T", "I", "N", "C", "T", scan_white_space.
+distinct_or_reduced_or_not(reduced) --> "R", "E", "D", "U", "C", "E", "D", scan_white_space.
+distinct_or_reduced_or_not(normal) --> {true}.
 
 % [6]  		ConstructQuery	  ::=  	'CONSTRUCT' ConstructTemplate DatasetClause* WhereClause SolutionModifier
+% [10]  	ConstructQuery	  ::=  	'CONSTRUCT' ( ConstructTemplate DatasetClause* WhereClause SolutionModifier | DatasetClause* 'WHERE' '{' TriplesTemplate? '}' SolutionModifier )
 construct_query(construct(T, Clauses, Where, SolutionModifier)) --> 
+	scan_white_space,
 	"C", "O", "N", "S", "T", "R", "U", "C", "T", 
 	scan_white_space,
 	construct_template(T), scan_white_space,
 	scan_dataset_clauses(Clauses), scan_white_space,
 	where_clause(Where), scan_white_space,
-	solution_modifier(SolutionModifier), scan_white_space.
+	solution_modifier(SolutionModifier).
+
+construct_query(construct([], Clauses, Where, SolutionModifier)) --> 
+	scan_white_space,
+	"C", "O", "N", "S", "T", "R", "U", "C", "T", 
+	scan_white_space,
+	scan_dataset_clauses(Clauses), scan_white_space,
+	"W", "H", "E", "R", "E", scan_white_space,
+	open_curly, ( triples_template(T1) ; { T1 = [] } ), close_curly,
+	{ Where = triples(T1) },
+	solution_modifier(SolutionModifier).
 
 % [7]  		DescribeQuery	  ::=  	'DESCRIBE' ( VarOrIRIref+ | '*' ) DatasetClause* WhereClause? SolutionModifier
+% [11]  	DescribeQuery	  ::=  	'DESCRIBE' ( VarOrIri+ | '*' )    DatasetClause* WhereClause? SolutionModifier
 describe_query(describe(Vars, DatasetClauses, WhereClause, SolutionModifier)) --> 
 	"D", "E", "S", "C", "R", "I", "B", "E", 
 	scan_white_space, 
-	( scan_var_or_iriref(Vars), { Vars \== [] } ; ("*", {Vars = "*"}) ), scan_white_space,
+	( scan_var_or_iri(Vars), { Vars \== [] } ; ("*", {Vars = "*"}) ), scan_white_space,
 	scan_dataset_clauses(DatasetClauses), scan_white_space,
 	( where_clause(WhereClause) ; {WhereClause = []} ), scan_white_space,
 	solution_modifier(SolutionModifier), scan_white_space.
 
-scan_var_or_iriref([]) --> {true}.
-scan_var_or_iriref([C|L]) --> var_or_iri_ref(C), scan_white_space, scan_var_or_iriref(L).
+scan_var_or_iri([]) --> {true}.
+scan_var_or_iri([C|L]) --> var_or_iri(C), scan_white_space, scan_var_or_iri(L).
 
 % [8]  		AskQuery	  ::=  	'ASK' DatasetClause* WhereClause
-ask_query(ask(C,W)) --> "A", "S", "k", scan_white_space, scan_dataset_clauses(C), scan_white_space, where_clause(W).
+% [12]  	AskQuery	  ::=  	'ASK' DatasetClause* WhereClause SolutionModifier
+ask_query(ask(C,W,M)) --> "A", "S", "k", scan_white_space, scan_dataset_clauses(C), scan_white_space, where_clause(W), solution_modifier(M).
 
 scan_dataset_clauses([]) --> {true}.
 scan_dataset_clauses([C|L]) --> dataset_clause(C), scan_white_space, scan_dataset_clauses(L).
@@ -98,14 +134,20 @@ default_graph_clause(S) --> source_selector(S).
 named_graph_clause(C) --> "N", "A", "M", "E", "D", scan_white_space, source_selector(C).
 
 % [12]  	SourceSelector	  ::=  	IRIref
-source_selector(S) --> iri_ref(S).
+% [16]  	SourceSelector	  ::=  	iri
+source_selector(S) --> iri(S).
 
 % [13]  	WhereClause	  ::=  	'WHERE'? GroupGraphPattern
 where_clause(C) --> scan_white_space, "W", "H", "E", "R", "E", scan_white_space, group_graph_pattern(C), scan_white_space.
 where_clause(C) --> scan_white_space, group_graph_pattern(C), scan_white_space.
 
 % [14]  	SolutionModifier	  ::=  	OrderClause? LimitOffsetClauses?
-solution_modifier(modifier([M|L])) --> ( order_clause(M) ; { M = [] } ), scan_white_space, ( limit_offset_clauses(L) ; { L = [] } ).
+% [18]  	SolutionModifier	  ::=  	GroupClause? HavingClause? OrderClause? LimitOffsetClauses?
+solution_modifier(modifier(G, H, O, L)) --> 
+	( group_clause(G) ; { G = [] } ),
+	( having_clause(H) ; { H = [] }),
+	( order_clause(O) ; { O = [] } ),
+	( limit_offset_clauses(L) ; { L = [] } ).
 
 % [15]  	LimitOffsetClauses	  ::=  	( LimitClause OffsetClause? | OffsetClause LimitClause? )
 limit_offset_clauses([L|O]) --> limit_clause(L), scan_white_space, ( offset_clause(O) ; {O = []}).
@@ -130,34 +172,303 @@ limit_clause(limit(L)) --> "L", "I", "M", "I", "T", scan_white_space, integer(L)
 % [19]  	OffsetClause	  ::=  	'OFFSET' INTEGER
 offset_clause(offset(C)) --> "O", "F", "F", "S", "E", "T", scan_white_space, integer(C).
 
-% [20]  	GroupGraphPattern	  ::=  	'{' TriplesBlock? ( ( GraphPatternNotTriples | Filter ) '.'? TriplesBlock? )* '}'
-group_graph_pattern([B|P]) --> open_curly, triples_block(B), scan_graph_pattern(P), close_curly.
-group_graph_pattern([P]) --> open_curly, scan_graph_pattern(P), close_curly.
+% [19]  	GroupClause	  ::=  	'GROUP' 'BY' GroupCondition+
+group_clause([G|L]) --> scan_white_space, "G", "R", "O", "U", "P", scan_white_space, "B", "Y", scan_white_space, group_condition(G), scan_group_condition(L).
 
-% ( GraphPatternNotTriples | Filter ) '.'? TriplesBlock? )
-scan_graph_pattern([]) --> scan_white_space, {true}, scan_white_space.
-scan_graph_pattern([P|L]) --> scan_white_space, ( graph_pattern_not_triples(P) ; filter(P) ), ( dot ; scan_white_space, { true } ), (triples_block(B) ; {B = []} ), scan_graph_pattern(L).
+scan_group_condition([G|L]) --> group_condition(G), scan_group_condition(L).
+scan_group_condition([]) --> {true}.
+
+% [20]  	GroupCondition	  ::=  	BuiltInCall | FunctionCall | '(' Expression ( 'AS' Var )? ')' | Var
+group_condition(C) --> built_in_call(C).
+group_condition(C) --> function_call(C).
+group_condition(E) --> open_paren, expression(E), close_paren.
+group_condition(as(A,V)) --> open_paren, expression(A), scan_white_space, "A", "S", scan_white_space, var(V), close_paren.
+group_condition(V) --> scan_white_space, var(V).
+
+% [21]  	HavingClause	  ::=  	'HAVING' HavingCondition+
+having_clause([H|L]) --> scan_white_space, "H", "A", "V", "I", "N", "G", scan_white_space, having_condition(H), scan_having_condidion(L).
+
+scan_having_condidion([H|L]) --> having_condition(H), scan_having_condidion(L).
+scan_having_condidion([]) --> {true}.
+
+% [22]  	HavingCondition	  ::=  	Constraint
+having_condition(C) --> constraint(C).
+
+% [28]  	ValuesClause	  ::=  	( 'VALUES' DataBlock )?
+values_clause(DB) --> scan_white_space, "V", "A", "L", "U", "E", "S", scan_white_space, data_block(DB).
+values_clause([]) --> {true}.
+
+% 29]  	Update	  ::=  	Prologue ( Update1 ( ';' Update )? )?
+update(P,U) --> prologue(P), scan_white_space, update1(U1), semicolon, update(U2), { U = (U1,U2) }.
+update(P,U) --> prologue(P), scan_white_space, update1(U).
+update(P,[]) --> prologue(P).
+
+% [30]  	Update1	  ::=  	Load | Clear | Drop | Add | Move | Copy | Create | InsertData | DeleteData | DeleteWhere | Modify
+update1(Op) --> load(Op) ; clear(Op) ; drop(Op) ; add(Op) ; move(Op) ; copy(Op) ; 
+				insert_data(Op) ; 
+				delete_data(Op) ; delete_where(Op) ; 
+				modify(Op).
+
+% [31]  	Load	  ::=  	'LOAD' 'SILENT'? iri ( 'INTO' GraphRef )?
+load(load(silent, I, Into)) --> 
+	scan_white_space, "LOAD", 
+	scan_white_space, "S" ,"I" ,"L" ,"E" ,"N" ,"T",
+	iri(I),
+	(
+		( scan_white_space, "I", "N", "T", "O",
+			graph_ref(Into)
+		) ; ( { Into = [] } )
+	).
+
+load(load(normal, I, Into)) --> 
+	scan_white_space, "LOAD", 
+	iri(I),
+	(
+		( scan_white_space, "I", "N", "T", "O",
+			graph_ref(Into)
+		) ; ( { Into = [] } )
+	).
+
+% [32]  	Clear	  ::=  	'CLEAR' 'SILENT'? GraphRefAll
+clear(clear(silent, G)) --> 
+	scan_white_space, "C", "L", "E", "A", "R",
+	scan_white_space, "S" ,"I" ,"L" ,"E" ,"N" ,"T", 
+	graph_ref_all(G).
+
+clear(clear(normal, G)) --> 
+	scan_white_space, "C", "L", "E", "A", "R",
+	graph_ref_all(G).
+
+% [33]  	Drop	  ::=  	'DROP' 'SILENT'? GraphRefAll
+drop(drop(silent, G)) --> 
+	scan_white_space, "D", "R", "O", "P",
+	scan_white_space, "S" ,"I" ,"L" ,"E" ,"N" ,"T", 
+	graph_ref_all(G).
+
+drop(drop(normal, G)) --> 
+	scan_white_space, "D", "R", "O", "P",
+	graph_ref_all(G).
+
+% [34]  	Create	  ::=  	'CREATE' 'SILENT'? GraphRef
+create(create(silent, G)) --> 
+	scan_white_space, "C" ,"R" ,"E" ,"A" ,"T" ,"E", 
+	scan_white_space, "S" ,"I" ,"L" ,"E" ,"N" ,"T", 
+	graph_ref(G).
+
+create(create(normal, G)) --> 
+	scan_white_space, "C" ,"R" ,"E" ,"A" ,"T" ,"E", 
+	graph_ref(G).
+
+% [35]  	Add	  ::=  	'ADD' 'SILENT'? GraphOrDefault 'TO' GraphOrDefault
+add(add(silent, From, To)) --> 
+	scan_white_space, "A", "D", "D", 
+	scan_white_space, "S" , "I" , "L" , "E" , "N" , "T", 
+	graph_or_default(From), 
+	scan_white_space, "T" , "O", 
+	graph_or_default(To).
+
+add(add(normal, From, To)) --> 
+	scan_white_space, "A", "D", "D", 
+	graph_or_default(From), 
+	scan_white_space, "T" , "O", 
+	graph_or_default(To).
+
+% [36]  	Move	  ::=  	'MOVE' 'SILENT'? GraphOrDefault 'TO' GraphOrDefault
+move(move(silent, From, To)) --> 
+	scan_white_space, "M", "O", "V", "E", 
+	scan_white_space, "S" , "I" , "L" , "E" , "N" , "T", 
+	graph_or_default(From), 
+	scan_white_space, "T" , "O", 
+	graph_or_default(To).
+
+move(move(normal, From, To)) --> 
+	scan_white_space, "M", "O", "V", "E", 
+	graph_or_default(From), 
+	scan_white_space, "T" , "O", 
+	graph_or_default(To).
+
+% [37]  	Copy	  ::=  	'COPY' 'SILENT'? GraphOrDefault 'TO' GraphOrDefault
+copy(copy(silent, From, To)) --> 
+	scan_white_space, "C" , "O" , "P" , "Y", 
+	scan_white_space, "S" , "I" , "L" , "E" , "N" , "T", 
+	graph_or_default(From), 
+	scan_white_space, "T" , "O", 
+	graph_or_default(To).
+
+copy(copy(normal, From, To)) --> 
+	scan_white_space, "C" , "O" , "P" , "Y", 
+	graph_or_default(From), 
+	scan_white_space, "T" , "O", 
+	graph_or_default(To).
+
+% [38]  	InsertData	  ::=  	'INSERT DATA' QuadData
+insert_data(D) --> 
+	scan_white_space, "I" , "N" , "S" , "E" , "R" , "T", 
+	scan_white_space, "D" , "A" , "T" , "A", 
+	quad_data(D).
+
+% [39]  	DeleteData	  ::=  	'DELETE DATA' QuadData
+delete_data(P) --> 
+	scan_white_space, "D" , "E" , "L" , "E" , "T" , "E", 
+	scan_white_space, "D" , "A" , "T" , "A", 
+	quad_data(P).
+
+% [40]  	DeleteWhere	  ::=  	'DELETE WHERE' QuadPattern
+delete_where(P) --> 
+	scan_white_space, "D" , "E" , "L" , "E" , "T" , "E", 
+	scan_white_space, "W" , "H" , "E" , "R" , "E", 
+	quad_pattern(P).
+
+% [41]  	Modify	  ::=  	( 'WITH' iri )? ( DeleteClause InsertClause? | InsertClause ) UsingClause* 'WHERE' GroupGraphPattern
+modify(modify(With, C, Using, Where)) --> 
+	scan_white_space, ( ( "W", "I", "T", "H", scan_white_space, iri(With) ) ; With = []),
+	( 
+		( 
+			delete_clause(D),  insert_clause(DI), { C = delete(D,DI) }
+			; insert_clause(C)
+		) 
+	),
+	using_clause(Using),
+	scan_white_space, "W", "H", "E", "R", "E", group_graph_pattern(Where).
+
+
+% [42]  	DeleteClause	  ::=  	'DELETE' QuadPattern
+delete_clause(P) --> scan_white_space, "D", "E", "L", "E", "T", "E", quad_pattern(P).
+
+% [43]  	InsertClause	  ::=  	'INSERT' QuadPattern
+insert_clause(P) --> scan_white_space, "I", "N", "S", "E", "R", "T", quad_pattern(P).
+
+% [44]  	UsingClause	  ::=  	'USING' ( iri | 'NAMED' iri )
+using_clause(I) --> scan_white_space, "U", "S", "I", "N", "G", iri(I).
+using_clause(named(I)) --> scan_white_space, "N", "A", "M", "E", "D", iri(I).
+
+% [45]  	GraphOrDefault	  ::=  	'DEFAULT' | 'GRAPH'? iri
+graph_or_default(graph(I)) --> scan_white_space, "G", "R", "A", "P", "H", scan_white_space, iri(I).
+graph_or_default(default(I)) --> scan_white_space, "D", "E", "F", "A", "U", "L", "T", scan_white_space, iri(I).
+
+% [46]  	GraphRef	  ::=  	'GRAPH' iri
+graph_ref(I) --> scan_white_space, "G", "R", "A", "P", "H", scan_white_space, iri(I).
+
+% [47]  	GraphRefAll	  ::=  	GraphRef | 'DEFAULT' | 'NAMED' | 'ALL'
+graph_ref_all(graph(R)) --> scan_white_space, graph_ref(R).
+graph_ref_all(default) --> scan_white_space, "D", "E", "F", "A", "U", "L", "T".
+graph_ref_all(named) --> scan_white_space, "N", "A", "M", "E", "D".
+graph_ref_all(all) --> scan_white_space, "A", "L", "L".
+
+% [48]  	QuadPattern	  ::=  	'{' Quads '}'
+quad_pattern(Q) --> scan_white_space, open_curly, quads(Q), close_curly.
+
+% [49]  	QuadData	  ::=  	'{' Quads '}'
+quad_data(Q) --> scan_white_space, open_curly, quads(Q), close_curly.
+
+% [50]  	Quads	  ::=  	TriplesTemplate? ( QuadsNotTriples '.'? TriplesTemplate? )*
+quads([L|V]) --> scan_white_space, triples_template(L), scan_quads(V).
+quads(V) --> scan_quads(V).
+
+scan_quads([A|L]) --> quads_not_triples(A), ( dot ; {true} ), scan_quads(L).
+scan_quads([dot(A,D)|L]) --> quads_not_triples(A), ( dot ; {true} ), triples_template(D), scan_quads(L).
+scan_quads([]) --> {true}.
+
+% [51]  	QuadsNotTriples	  ::=  	'GRAPH' VarOrIri '{' TriplesTemplate? '}'
+quads_not_triples(Var, Template) --> 
+	scan_white_space, "G", "R", "A", "P", "H", 
+	scan_white_space, var_or_iri(Var), 
+	scan_white_space, open_curly, ( triples_template(Template) ; {Template = []} ), close_curly.
+
+% [52]  	TriplesTemplate	  ::=  	TriplesSameSubject ( '.' TriplesTemplate? )?
+triples_template(T) --> scan_white_space, triples_same_subject(T).
+triples_template(T) --> scan_white_space, triples_same_subject(T), dot.
+triples_template(dot(T,T2)) --> scan_white_space, triples_same_subject(T), dot, triples_template(T2).
+
+% [54]  	GroupGraphPatternSub	  ::=  	TriplesBlock? ( GraphPatternNotTriples '.'? TriplesBlock? )*
+group_graph_pattern_sub([TB|L]) --> triples_block(TB), scan_ggps(L).
+group_graph_pattern_sub(L) --> scan_ggps(L).
+
+scan_ggps([(A1,A2)|L]) --> scan_white_space, graph_pattern_not_triples(A1), ( dot ; {true} ), triples_block(A2), scan_ggps(L).
+scan_ggps([A|L]) --> scan_white_space, graph_pattern_not_triples(A), ( dot ; {true} ), scan_ggps(L).
+scan_ggps([]) --> {true}.
+
+% [59]  	ServiceGraphPattern	  ::=  	'SERVICE' 'SILENT'? VarOrIri GroupGraphPattern
+service_graph_pattern(service(silent, V, G)) --> 
+	scan_white_space, "S", "E", "R", "V", "I", "C", "E", 
+	scan_white_space, "S", "I", "L", "E", "N", "T", 
+	scan_white_space, var_or_iri(V), 
+	scan_white_space, group_graph_pattern(G).
+
+service_graph_pattern(service(normal, V, G)) --> 
+	scan_white_space, "S", "E", "R", "V", "I", "C", "E", 
+	scan_white_space, var_or_iri(V), 
+	scan_white_space, group_graph_pattern(G).
+
+% [60]  	Bind	  ::=  	'BIND' '(' Expression 'AS' Var ')'
+bind(bind(Expression, Var)) --> 
+		scan_white_space, "B", "I", "N", "D", scan_white_space, 
+		open_paren, 
+			expression(Expression), 
+			scan_white_space, "A", "S", scan_white_space, 
+			var(Var), 
+		close_paren.
+
+% [61]  	InlineData	  ::=  	'VALUES' DataBlock
+inline_data(D) --> scan_white_space, "V", "A", "L", "U", "E", "S", data_block(D).
+
+% [62]  	DataBlock	  ::=  	InlineDataOneVar | InlineDataFull
+data_block(B) --> inline_data_one_var(B).
+data_block(B) --> inline_data_full(B).
+
+% [63]  	InlineDataOneVar	  ::=  	Var '{' DataBlockValue* '}'
+inline_data_one_var(inline([V], D)) --> scan_white_space, var(V), scan_white_space, open_curly, scan_data_block_values(D), close_curly.
+
+% [64]  	InlineDataFull	  ::=  	( NIL | '(' Var* ')' ) '{' ( '(' DataBlockValue* ')' | NIL )* '}'
+inline_data_full(inline([], Vals)) --> scan_white_space, nil, scan_white_space, open_curly, scan_dbv(Vals), close_curly.
+inline_data_full(inline(Vars, Vals)) --> scan_white_space, open_paren, scan_dvars(Vars), close_paren, scan_white_space, open_curly, scan_dbv(Vals), close_curly.
+
+scan_dvars([A|L]) --> scan_white_space, var(A), scan_dvars(L).
+scan_dvars([]) --> {true}.
+
+scan_dbv([A|L]) --> scan_white_space, open_paren, scan_data_block_values(A), close_paren, scan_white_space, scan_dbv(L).
+scan_dbv([]) --> {true}.
+scan_dbv([]) --> nil.
+
+scan_data_block_values([V|L]) --> scan_white_space, data_block_value(V), scan_data_block_values(L).
+scan_data_block_values([]) --> {true}.
+
+% [65]  	DataBlockValue	  ::=  	iri |	RDFLiteral |	NumericLiteral |	BooleanLiteral |	'UNDEF'
+data_block_value(iri(I)) --> iri(I).
+data_block_value(rdf_literal(I)) --> rdf_literal(I).
+data_block_value(numeric_literal(I)) --> numeric_literal(I).
+data_block_value(boolean_literal(I)) --> boolean_literal(I).
+data_block_value(undef) --> "U", "N", "D", "E", "F".
+
+% [66]  	MinusGraphPattern	  ::=  	'MINUS' GroupGraphPattern
+minus_graph_pattern(P) --> scan_white_space, "M", "I", "N", "U", "S", scan_white_space, group_graph_pattern(P).
+
+% [53]  	GroupGraphPattern	  ::=  	'{' ( SubSelect | GroupGraphPatternSub ) '}'
+group_graph_pattern(P) --> scan_white_space, open_curly, sub_select(P), close_curly.
+group_graph_pattern(P) --> scan_white_space, open_curly, group_graph_pattern_sub(P), close_curly.
 
 % [21]  	TriplesBlock	  ::=  	TriplesSameSubject ( '.' TriplesBlock? )?
-triples_block(block([B])) --> scan_white_space, triples_same_subject(B), scan_white_space.
-triples_block(block([B])) --> scan_white_space, triples_same_subject(B), dot.
-triples_block(block([B1|B2])) --> scan_white_space, triples_same_subject(B1), dot, scan_triples_block(B2), scan_white_space.
-
-scan_triples_block([]) --> {true}.
-scan_triples_block([B]) --> scan_white_space, triples_same_subject(B), scan_white_space.
-scan_triples_block([B]) --> scan_white_space, triples_same_subject(B), dot.
-scan_triples_block([B|L]) --> scan_white_space, triples_same_subject(B), dot, scan_triples_block(L), scan_white_space.
+% [55]  	TriplesBlock	  ::=  	TriplesSameSubjectPath ( '.' TriplesBlock? )?
+triples_block(block([B])) --> scan_white_space, triples_same_subject_path(B), scan_white_space.
+triples_block(block([B1|B2])) --> scan_white_space, triples_same_subject_path(B1), dot, ( ( triples_block(B2a), { B2 = [B2a] } ) ; {B2 = []} ), scan_white_space.
 
 % [22]  	GraphPatternNotTriples	  ::=  	OptionalGraphPattern | GroupOrUnionGraphPattern | GraphGraphPattern
-graph_pattern_not_triples(P) --> optional_graph_pattern(P).
+% [56]  	GraphPatternNotTriples	  ::=  	GroupOrUnionGraphPattern | OptionalGraphPattern | MinusGraphPattern | GraphGraphPattern | ServiceGraphPattern | Filter | Bind | InlineData
 graph_pattern_not_triples(P) --> group_or_union_graph_pattern(P).
+graph_pattern_not_triples(P) --> optional_graph_pattern(P).
+graph_pattern_not_triples(P) --> minus_graph_pattern(P).
 graph_pattern_not_triples(P) --> graph_graph_pattern(P).
+graph_pattern_not_triples(P) --> service_graph_pattern(P).
+graph_pattern_not_triples(P) --> filter(P).
+graph_pattern_not_triples(P) --> bind(P).
+graph_pattern_not_triples(P) --> inline_data(P).
 
 % [23]  	OptionalGraphPattern	  ::=  	'OPTIONAL' GroupGraphPattern
 optional_graph_pattern(P) --> scan_white_space, "O", "P", "T", "I", "O", "N", "A", "L", scan_white_space, group_graph_pattern(P), scan_white_space.
 
 % [24]  	GraphGraphPattern	  ::=  	'GRAPH' VarOrIRIref GroupGraphPattern
-graph_graph_pattern(graph(P,C)) --> scan_white_space, "G", "R", "A", "P", "H", scan_white_space, var_or_iri_ref(P), scan_white_space, group_graph_pattern(C).
+% [58]  	GraphGraphPattern	  ::=  	'GRAPH' VarOrIri GroupGraphPattern
+graph_graph_pattern(graph(P,C)) --> scan_white_space, "G", "R", "A", "P", "H", scan_white_space, var_or_iri(P), scan_white_space, group_graph_pattern(C).
 
 % [25]  	GroupOrUnionGraphPattern	  ::=  	GroupGraphPattern ( 'UNION' GroupGraphPattern )*
 group_or_union_graph_pattern(union([P|L])) --> group_graph_pattern(P), scan_white_space, scan_unions(L).
@@ -174,11 +485,14 @@ constraint(C) --> built_in_call(C).
 constraint(C) --> function_call(C).
 
 % [28]  	FunctionCall	  ::=  	IRIref ArgList
-function_call(call([F|L])) --> iri_ref(F), arg_list(L).
+% [70]  	FunctionCall	  ::=  	iri ArgList
+function_call(call([F|L])) --> iri(F), arg_list(L).
 
 % [29]  	ArgList	  ::=  	( NIL | '(' Expression ( ',' Expression )* ')' )
+% [71]  	ArgList	  ::=  	NIL | '(' 'DISTINCT'? Expression ( ',' Expression )* ')'
 arg_list([]) --> nil.
-arg_list([X|Args]) --> open_paren(), expression(X), scan_expressions(Args), close_paren().
+arg_list([X|Args]) --> open_paren, expression(X), scan_expression_list(Args), close_paren.
+arg_list(distinct([X|Args])) --> open_paren, "D", "I", "S", "T", "I", "N", "C", "T", scan_white_space, expression(X), scan_expression_list(Args), close_paren.
 
 % [30]  	ConstructTemplate	  ::=  	'{' ConstructTriples? '}'
 construct_template([]) --> open_curly, close_curly.
@@ -212,8 +526,9 @@ object_list([O]) --> object(O).
 object(X) --> graph_node(X).
 
 % [37]  	Verb	  ::=  	VarOrIRIref | 'a'
+% [78]  	Verb	  ::=  	VarOrIri | 'a'
 verb(a) --> "a".
-verb(X) --> var_or_iri_ref(X).
+verb(X) --> var_or_iri(X).
 
 % [38]  	TriplesNode	  ::=  	Collection |	BlankNodePropertyList
 triples_node(X) --> collection(X).
@@ -252,11 +567,15 @@ graph_term(T) --> boolean_literal(T).
 graph_term(T) --> blank_node(T).
 graph_term(nil) --> nil().
 
+% [72]  	ExpressionList	  ::=  	NIL | '(' Expression ( ',' Expression )* ')'
+expression_list([]) --> nil.
+expression_list([L|L2]) --> scan_white_space, open_paren, expression(L), scan_expression_list(L2), close_paren.
+
+scan_expression_list([E|L]) --> comma, expression(E), scan_expression_list(L).
+scan_expression_list([]) --> {true}.
+
 % [46]  	Expression	  ::=  	ConditionalOrExpression
 expression(E) --> conditional_or_expression(E).
-
-scan_expressions([]) --> {true}.
-scan_expressions([X|L]) --> expression(X), scan_expressions(L).
 
 % [47]  	ConditionalOrExpression	  ::=  	ConditionalAndExpression ( '||' ConditionalAndExpression )*
 conditional_or_expression(E) --> conditional_and_expression(E).
@@ -299,11 +618,21 @@ scan_value_logical([]) --> {true}.
 % [49]  	ValueLogical	  ::=  	RelationalExpression
 value_logical(L) --> scan_white_space, relational_expression(L).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% [83]  	PropertyListPathNotEmpty	  ::=  	( VerbPath | VerbSimple ) ObjectListPath ( ';' ( ( VerbPath | VerbSimple ) ObjectList )? )*
+% [81]  	TriplesSameSubjectPath	  ::=  	VarOrTerm PropertyListPathNotEmpty |	TriplesNodePath PropertyListPath
+triples_same_subject_path((T,L)) --> scan_white_space, var_or_term(T), scan_white_space, property_list_not_empty(L).
+triples_same_subject_path((T,L)) --> scan_white_space, triples_node_path(T), scan_white_space, property_list_path(L).
+	
+% [82]  	PropertyListPath	  ::=  	PropertyListPathNotEmpty?
+property_list_path(P) --> property_list_path_not_empty(P) ; {P = []}.
 
+% [83]  	PropertyListPathNotEmpty	  ::=  	( VerbPath | VerbSimple ) ObjectListPath ( ';' ( ( VerbPath | VerbSimple ) ObjectList )? )*
+property_list_path_not_empty([property(VP,LP) | L]) --> ( verb_path(VP) ; verb_simple(VP) ), scan_white_space, object_list_path(LP), scan_property_list_path_not_empty(L).
+
+scan_property_list_path_not_empty([property(VP,LP)|L]) --> 
+	scan_white_space, ";", scan_white_space, 
+	( verb_path(VP) ; verb_simple(VP) ), scan_white_space, 
+	object_list(LP), scan_property_list_path_not_empty(L).
+scan_property_list_path_not_empty([]) --> {true}.
 
 % [84]  	VerbPath	  ::=  	Path
 verb_path(P) --> path(P).
