@@ -787,3 +787,7 @@ semicolon() --> scan_white_space, ";", scan_white_space.
 
 printc() :- 'C'(_, X, _), writeln(X), fail.
 test :- parse_file(test, X), writeln(X).
+test(X)  :- parse_file(test, X).
+test2(X) :- parse_file(q1, X).
+test3(X) :- parse_file(q2, X).
+test4(X) :- parse_file(q3, X).
