@@ -1,0 +1,282 @@
+
+\chapter{{\tt B+ Tree}: B+ Tree Indexing Library}
+
+\begin{center}
+  {\Large {\bf By Ken Koch}}
+\end{center}
+
+\section{Introduction}
+
+B+ Trees are data structures which provide fast indexing for range and prefix queries. 
+The XSB B+ Tree library uses an external library to implement an on disk B+ Tree indexing system.
+Currently, the B+ Tree library uses a library called Kyoto Cabinet;
+%% 
+\begin{quote}
+  \url{http://fallabs.com/kyotocabinet/} 
+\end{quote}
+%% 
+This library supports a lot of the features provided by the kyoto library including transaction support.
+To use the XSB B+ Tree library, you must first download and install the Kyoto Cabinet Library.
+
+\section{Basic Usage}
+
+The basic operations on a B+ Tree can be carried out using a small set of predicates for create, open, insert and get.
+
+\subsection{Creating and Opening a B+ Tree}
+
+Most B+ Tree indexes will be created explicitly using {\tt btcreate/3} and {\tt btinit/2}. 
+These two predicates provide the functionality to create a B+ Tree in the working directory and 
+get a handle on a tree that you have created to allow one to work with it. To begin, you must consult the B+ 
+tree library:
+%%
+\begin{verbatim}
+ ?- [bt].  
+\end{verbatim}
+%%
+This will load all of the predicates we need. Next to create a B+ Tree you will use {\tt btcreate/3}:
+
+\begin{description}
+
+  \index{\texttt{btcreate/3}}
+\item[btcreate({\it +DBName}, {\it +PredicateName/Arity}, {\it +IndexArgumentNumber})]\mbox{}
+  \\
+    {\it DBName} is an atom that specifies a filename where the B+ Tree will be placed (relative to the working directory).
+
+    {\it PredicateName} is an atom that specifies the predicate that will be stored in this B+ Tree.
+    
+    {\it Arity} is a number which corresponds to the arity of the predicate which will be stored in the B+ Tree.
+    
+    {\it IndexArgumentNumber} is a number which corresponds to the (1-based) argument of the predicate to build the 
+    B+ Tree index on, currently the library does not support multiple indexes. 
+  \index{\texttt{btinit/2}}
+\item[btinit({\it +DBName}, {\it -Handle})]\mbox{}
+  \\
+    {\it DBName} is an atom that specifies a filename where the B+ Tree is placed (relative to the working directory).
+
+    {\it Handle} will be unified with an integer which needs to be passed to future library calls.
+
+\end{description}
+One should always close handles that are opened using {\tt binit/2}, this ensures proper termination of the tree
+and that changes made are actually comitted to disk.
+\begin{description}
+
+  \index{\texttt{btclose/1}}
+\item[btclose({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}
+
+\end{description}
+
+\subsection{Inserting Data}
+
+To insert data into the B+ Tree, you should use the {\tt btinsert/2} predicate which takes as arguments the handle to
+your B+ Tree and the value you would like to insert. Values are inserted as functor symbols and the libarary will extract
+the correct value to use as the index.
+
+\begin{description}
+
+  \index{\texttt{btinsert/2}}
+\item[btinsert({\it +Handle}, {\it +Value})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}
+
+    {\it Value} is a functor symbol with the prediacte name and arity used when creating the index.
+
+\end{description}
+
+For example to create a B+ Tree index for the predicate p/2 indexed on the first argument and insert some values into it:
+%% 
+\begin{verbatim}
+  ?- [bt].
+  ?- btcreate(myindex, p/2, 1). 
+  ?- btinit(myindex, Handle), 
+      btinsert(Handle, p(a,b)), 
+      btinsert(Handle, p(b,c)), 
+      btclose(Handle).
+\end{verbatim}
+%% 
+\subsection{Basic Querying}
+
+To retrieve data from the index, we can use the basic query operation, {\tt btget/3}.
+
+\begin{description}
+
+  \index{\texttt{btget/3}}
+\item[btget({\it +Handle}, {\it +Key}, {\it -Value})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}
+
+    {\it Key} The key to look up.
+
+    {\it Value} is a functor symbol with the predicate name and arity used when creating the index.
+
+\end{description}
+
+You can then fail through the results in the B+ Tree that match the provided key.
+
+The library also provides a predicate to retrieve all entries in the database regardless of key.
+
+\begin{description}
+
+    \index{\texttt{btgetall\_rev/2}}
+  \item[btgetall({\it +Handle}, {\it -Value})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}
+
+    {\it Value} is a functor symbol with the predicate name and arity used when creating the index.
+
+   \index{\texttt{btgetall\_rev/2}}
+  \item[btgetall\_rev({\it +Handle}, {\it -Value})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}
+
+    {\it Value} is a functor symbol with the predicate name and arity used when creating the index.
+
+\end{description}
+
+{\tt btgetall\_rev/2} will provide the same output as {\tt btgetall/2} except it will return the records in reverse order.
+
+\subsection{Manual Cursor Mode (MCM)}
+
+The B+ Tree also provides functionality to manually control the database cursor and retrieve keys and values at any location in the tree.
+To use MCM you must first intialize MCM on an open handle.
+
+\begin{description}
+
+  \index{\texttt{btminit/1}}
+\item[btminit({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}, this will set the mode of this handle to manual cursor mode.
+
+\end{description}
+
+Next you can use MCM to move the cursor around the tree.
+
+\begin{description}
+
+  \index{\texttt{btmfirst/1}}
+\item[btmfirst({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}, this will set cursor to the very first record in the tree.
+  \index{\texttt{btmlast/1}}
+\item[btmlast({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}, this will set cursor to the very last record in the tree.
+  \index{\texttt{btmnext/1}}
+\item[btmnext({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}, this will set cursor to the very next record in the tree.
+  \index{\texttt{btmprev/1}}
+\item[btmprev({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}, this will set cursor to the record immediately before the current record in the tree.
+
+\end{description}
+
+The following two predicates can be used to see the key and value at the current cursor position.
+
+\begin{description}
+
+  \index{\texttt{btmkey/2}}
+\item[btmkey({\it +Handle}, {\it -Key})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}
+    {\it Key} is an atom containing the key of record at the current position.
+
+  \index{\texttt{btmval/2}}
+\item[btmval({\it +Handle}, {\it -Val})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}
+    {\it Val} is an atom containing the value of record at the current position.
+
+\end{description}
+
+An example of manual cursor mode can be found in the implementation of btgetall/2:
+
+\begin{verbatim}
+  btgetall(Handle, Value) :- 
+    btminit(Handle),
+    btmfirst(Handle),
+    btgetallnext(Handle, Value).
+
+  btgetallnext(Handle, Value) :- 
+    btmval(TreeHandle, Value0),
+    ( 
+      unnumbervars(Value0, 0, Value1),
+      Value = Value1 ; 
+        btmnext(TreeHandle),
+        btgetallnext(TreeHandle, Value)
+    ).
+\end{verbatim}
+
+\subsection{Transactions}
+
+The Library has basic support for transactions through the predicates {\tt btstrans/1}, {\tt btctrans/1}, and {\tt btatrans/1}.
+
+\begin{description}
+
+  \index{\texttt{btstrans/1}}
+\item[btstrans({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}, this call will start a transaction on the given database handle.
+  \index{\texttt{btctrans/1}}
+\item[btctrans({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}, this call will commit a transaction on the given database handle.
+  \index{\texttt{btatrans/1}}
+\item[btatrans({\it +Handle})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}, this call will abort a transaction on the given database handle.
+
+\end{description}
+
+\subsection{Meta Data}
+
+The library also provides some functions for retrieving meta data about open databases.
+
+\begin{description}
+
+  \index{\texttt{btpredname/2}}
+\item[btpredname({\it +Handle}, {\it -PredName})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}.
+
+    {\it PredName} will be an atom representing the prediacte name for this index.
+  \index{\texttt{btarity/2}}
+\item[btarity({\it +Handle}, {\it -Arity})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}.
+
+    {\it Arity} will be a number representing the arity used for this index
+  \index{\texttt{btindexon/2}}
+\item[btindexon({\it +Handle}, {\it -Argnum})]\mbox{}
+  \\
+    {\it Handle} is an integer returned by {\tt btinit/2}.
+    
+    {\it Argnum} will be a number representing the argument index for this index.
+
+\end{description}
+
+\subsection{Built-in Indexing}
+
+The current implementation supports a built-in form of indexing as well with some temporary restrictions. 
+The current implementation supports a read-only method to access facts stored in a database using XSB's {\tt import} construct.
+To load an index using import, you must place an import statement inside a .P file like so:
+
+\begin{verbatim}
+  :- import q/2 from myindex as btree.
+\end{verbatim}
+
+Note that the predicate you load does not have to match the predicate name stored in the index but it does have to match 
+on arity. Note following the {\tt as} keyword must be the term btree or btree(N) where N is the argument number to index on. Be 
+aware this must also match the index argument used to create the index file.
+
+Once the B+ Tree is loaded this way, you can query it by simply providing the predicate like so:
+
+\begin{verbatim}
+  ?- q(A,B).
+\end{verbatim}
+
+This will allow you to fail through all of the facts in the index. If the indexed argument is bound, a keyed lookup will be done, if it is not,
+then manual cursor mode will be usede to retrieve the entries.
+
