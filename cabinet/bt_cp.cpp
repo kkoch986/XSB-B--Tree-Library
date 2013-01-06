@@ -161,7 +161,7 @@ extern "C" int c_bt_init(char *dbname, int *t)
 	sprintf(buff, "%s/meta", dbname);
 
 	// open the meta database
-	if (!hashdb.open(buff, HashDB::OWRITER | HashDB::OCREATE)) {
+	if (!hashdb.open(buff, HashDB::OWRITER | HashDB::ONOLOCK)) {
 	  cerr << "open error: " << hashdb.error().name() << endl;
 	  return META_OPEN_ERROR;
 	}
@@ -208,7 +208,7 @@ extern "C" int c_bt_init(char *dbname, int *t)
 	sprintf(buff, "%s/db", dbname);
 
 	// open the database
-	if (!db->open(buff, ForestDB::OWRITER | ForestDB::OCREATE)) {
+	if (!db->open(buff, ForestDB::OWRITER | ForestDB::OTRYLOCK | ForestDB::OCREATE)) {
 	  cerr << "open error: " << db->error().name() << endl;
 	  return DB_OPEN_ERROR;
 	}
@@ -243,7 +243,10 @@ extern "C" int c_bt_close(int handle)
 		return NO_SUCH_HANDLE;
 
 	if(!db->db->close())
+	{
+		cerr << "close error: " << db->db->error().name() << endl;
 		return DB_CLOSE_ERROR;
+	}
 
 	// free the result buffer if anything is in there
 	if(db->result_buffer != NULL)
@@ -267,9 +270,29 @@ extern "C" int c_bt_size(int handle, int *size)
 	if(db == NULL)
 		return NO_SUCH_HANDLE;
 
-	(*size) = db->db->count();
-	if((*size) == -1)
-		return SIZE_ERROR;
+	// open the meta database
+	char buff[MAXLINE];
+	HashDB hashdb;
+	sprintf(buff, "%s/meta", db->dbname);
+	if (!hashdb.open(buff, HashDB::OWRITER | HashDB::OCREATE)) {
+	  cerr << "open error: " << hashdb.error().name() << endl;
+	  return META_OPEN_ERROR;
+	}
+
+	int val = -1;
+	if( (val = hashdb.increment("size",4,0,1) ) == kyotocabinet::INT64MIN )
+	{
+		cerr << "get size error: " << hashdb.error().name() << endl;
+		return META_READ_ERROR;
+	}
+
+	(*size) = val; 
+
+	// close the meta database
+	if (!hashdb.close()) {
+	  cerr << "close error: " << hashdb.error().name() << endl;
+	  return META_CLOSE_ERROR;
+	}	
 
 	return NO_ERROR;
 }
@@ -318,6 +341,30 @@ extern "C" int c_bt_insert(int handle, char *keystr, char *valstr)
 	if(!db->db->append(keystr, strlen(keystr), valstr, strlen(valstr)+1))
 		return DATA_INSERT_ERROR; 
 
+	// update the META table with the new count
+	char buff[MAXLINE];
+	HashDB hashdb;
+	// open the meta database
+	sprintf(buff, "%s/meta", db->dbname);
+
+	// open the meta database
+	if (!hashdb.open(buff, HashDB::OWRITER | HashDB::OCREATE)) {
+	  cerr << "open error: " << hashdb.error().name() << endl;
+	  return META_OPEN_ERROR;
+	}
+
+	int val = -1;
+	if( (val = hashdb.increment("size",4,1,1) ) == kyotocabinet::INT64MIN )
+	{
+		cerr << "size increment error: " << hashdb.error().name() << endl;
+	}
+
+	// close the meta database
+	if (!hashdb.close()) {
+	  cerr << "close error: " << hashdb.error().name() << endl;
+	  return META_CLOSE_ERROR;
+	}	
+
 	return NO_ERROR;
 }
 
@@ -360,7 +407,11 @@ extern "C" int c_bt_query_next(int handle, char **valstr)
 		return NO_SUCH_HANDLE;
 
 	// if the buffer size is 0, there are no results queued
-	if(db->result_buffer + db->buffer_size <= db->current_location || db->result_buffer == NULL)
+	if(
+		db->result_buffer + db->buffer_size <= db->current_location 
+		|| db->result_buffer == NULL
+		|| strlen(db->current_location) == 0
+	)
 		return NO_RESULTS;
 
 	// find out how long the next string is
@@ -586,7 +637,10 @@ extern "C" int c_bt_mcm_next(int handle)
 	char *valstr;
 	int e = c_bt_query_next(handle, &valstr);
 
-	if(e == NO_RESULTS)
+	if(e == NO_RESULTS 
+		|| db->result_buffer + db->buffer_size <= db->current_location 
+		|| db->result_buffer == NULL
+		|| strlen(db->current_location) == 0)
 	{
 		// try to advance the cursor
 		if(!db->cursor->step())
@@ -606,7 +660,7 @@ extern "C" int c_bt_mcm_next(int handle)
 		if(db->result_buffer == NULL)
 			return NO_RESULTS;
 
-		// move to the last element in the list
+		// move to the first element in the list
 		db->current_location = db->result_buffer;
 
 	}
@@ -688,7 +742,7 @@ extern "C" int c_bt_mcm_val(int handle, char **valstr)
 	// try to get a value from the currently loaded buffer
 	(*valstr) = db->current_location;
 
-	if((*valstr) == NULL || (**valstr) == EOF)
+	if((*valstr) == NULL || strlen(*valstr) == 0)
 		return NO_VALUE;
 
 	return NO_ERROR;
@@ -713,6 +767,20 @@ extern "C" int c_bt_mcm_key(int handle, char **valstr)
 
 	if((*valstr) == NULL || sp == 0)
 		return NO_VALUE;
+
+	return NO_ERROR;
+}
+
+
+extern "C" int c_bt_errmsg(int handle, const char **message)
+{
+	// find the handle	
+	struct open_d *db = find(handle);
+
+	if(db == NULL)
+		return NO_SUCH_HANDLE;
+
+	(*message) = db->db->error().name();
 
 	return NO_ERROR;
 }

@@ -14,18 +14,20 @@
 :- import bt_dbname/3 from bt_c.
 :- import bt_trans_start/2, bt_trans_commit/2, bt_trans_abort/2 from bt_c.
 :- import bt_get_predname/3, bt_get_arity/3, bt_get_indexon/3 from bt_c.
+:- import bt_error_message/2 from bt_c.
+
 
 :- import numbervars/3, unnumbervars/3 from num_vars.
 
-:- export btinit/2, btclose/1, btsize/2, btdrop/1, btname/2, btcreate/3.
-:- export btinsert/2, btinsertkeep/2.
-:- export btget/3, btprefix/3, btrange/4, btgetall/2, btgetall_rev/2, 
-			btgetall_key/2, btgetall_key_rev/2.
-% :- export btimport/2, btexport/2, btpurgecorrupt/1, btrepair/2.
-:- export btminit/1, btmfirst/1, btmlast/1, btmnext/1, btmprev/1, 
-			btmjump/2, btmjump_rev/2, btmkey/2, btmval/2, btmout/1.
-:- export btstrans/1, btctrans/1, btatrans/1.
-:- export btpredname/2, btarity/2, btindexon/2.
+% :- export btinit/2, btclose/1, btsize/2, btdrop/1, btname/2, btcreate/3.
+% :- export btinsert/2, btinsertkeep/2.
+% :- export btget/3, btprefix/3, btrange/4, btgetall/2, btgetall_rev/2, 
+% 			btgetall_key/2, btgetall_key_rev/2.
+% % :- export btimport/2, btexport/2, btpurgecorrupt/1, btrepair/2.
+% :- export btminit/1, btmfirst/1, btmlast/1, btmnext/1, btmprev/1, 
+% 			btmjump/2, btmjump_rev/2, btmkey/2, btmval/2, btmout/1.
+% :- export btstrans/1, btctrans/1, btatrans/1.
+% :- export btpredname/2, btarity/2, btindexon/2.
 
 % this function CREATES a new directory structure for the provided predicate and creates 
 % b+ tree and meta database inside it.
@@ -44,7 +46,7 @@ btsize(Handle, Size) :- bt_size(Handle, Size, Error), handle_error(Error).
 btinsert(Handle, Term) :- 
 	numbervars(Term, 0, _),
 	bt_insert(Handle, Term, Error),
-	handle_error(Error).
+	handle_error(Handle, Error).
 	
 %% Non-Deterministically find terms that match the key exactly.
 btget(TreeHandle, Key, Value) :- 
@@ -191,3 +193,40 @@ print_error(ECode) :- ECode \== 0, db_error(ECode, Message), write('[ERROR] '), 
 
 handle_error(0) :- !.
 handle_error(E) :- print_error(E), !, fail.
+
+handle_error(_,0) :- !.
+handle_error(H,E) :- print_error(E), bt_error_message(H,ERR), writeln(ERR), !, fail.
+
+
+%%%% MAKE:
+
+:- import platform/1 from shell.
+:- import misc_error/1 from error_handler.
+
+clean():- 
+	shell('rm -f *dylib *.xwam *.o *.so xsb_wrap_*.c').
+
+make:- 
+	platform(Platform),
+	(Platform == darwin -> make_darwin 
+	 ; Platform == 'linux-gnu' -> make_linux
+            ; misc_error(['Unknown platform: ',Platform,
+	                   ' -- don''t know how to make -- see xasp/prologMake.P']) ).
+
+make_darwin() :- 
+	writeln('darwin'),
+	xsb_configuration(packagesdir,PkgPath),
+	clean,
+	% 1) compile bt_cp.cpp
+	shell(['gcc -o  ',PkgPath, '/bt_cp.so -shared ',PkgPath, '/bt_cp.cpp -lkyotocabinet -lstdc++ -lz -lpthread -lm -lc -B/usr/local/lib -fPIC']),
+	% touch the bt_c fiel so it is reloaded
+	shell(['touch ', PkgPath, '/bt_c.c']).
+
+make_linux() :-
+	writeln('linux'),
+	xsb_configuration(packagesdir,PkgPath),
+	clean,
+	% 1) compile bt_cp.cpp
+	shell(['gcc -s -o  ',PkgPath, '/bt_cp.so -shared  ',PkgPath, '/bt_cp.cpp -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -B/usr/local/lib -fPIC']),
+	% touch the bt_c fiel so it is reloaded
+	shell(['touch ', PkgPath, '/bt_c.c']).

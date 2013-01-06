@@ -1,7 +1,0 @@
-
-:- import parse_file/2 from sparse.
-
-efile(F, Base, PL, RL) :- parse_file(F, AST), eval_query(AST, Base, PL, RL).
-
-eval_query( query(prologue(Base, PrefixList), Q), Base, PrefixList, ResultsList) :- 
-	writeln(Q).

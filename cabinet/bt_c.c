@@ -1032,3 +1032,27 @@ DllExport int call_conv bt_range_next(CTXTdecl)
 	return TRUE;
 }
 
+
+int c_bt_errmsg(int handle, char **message);
+DllExport int call_conv bt_error_message(CTXTdecl)
+{
+	// Find the IndexTable associated with the handle.
+	prolog_term handle_term = reg_term(CTXTdecl 1);
+	if(!is_int(handle_term))
+	{
+		// unify the error
+		ctop_int(3, HANDLE_NOT_INT);
+		return TRUE;
+	}
+
+	int handle_index = p2c_int(handle_term);
+	char *message;
+	//int error = c_bt_errmsg(handle_index, &message);
+	c_bt_errmsg(handle_index, &message);
+
+	// set the results
+	//ctop_int(3, error);
+	extern_ctop_string(2, message);
+
+	return TRUE;
+}

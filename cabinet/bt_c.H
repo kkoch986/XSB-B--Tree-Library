@@ -1,4 +1,5 @@
-:- ldoption('-lqdbm -B/usr/local/lib ./bt_cp.so ./bt_cp.cpp').
+:- ldoption('-lqdbm -B/usr/local/lib /home/ken/XSB/packages/bt_cp.so /home/ken/XSB/packages/bt_cp.cpp').
+
 
 %% new create stuff
 :- export bt_create/5.
@@ -29,4 +30,5 @@
 :- export bt_trans_start/2, bt_trans_commit/2, bt_trans_abort/2.
 
 % meta data
-:- export bt_get_predname/3, bt_get_arity/3, bt_get_indexon/3.
+:- export bt_get_predname/3, bt_get_arity/3, bt_get_indexon/3. 
+:- export bt_error_message/2.

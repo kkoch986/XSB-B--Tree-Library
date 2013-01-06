@@ -45,10 +45,10 @@ test_odbc:-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Testers for B+ Tree Lib %%%%%%%%%
-?- ['../../bt_c'], ['../../bt'].
+?- [bt_c], [bt].
 
 build_btree(X) :- 
-	btdrop(testdb),
+	%btdrop(testdb),
 	walltime(T1),
 	btcreate(testdb, p/2, 1),
 	btinit(testdb, Handle),
@@ -58,7 +58,7 @@ build_btree(X) :-
 	Time is T2 - T1,
 	write('Built B+ Tree with '), write(X), write(' elements in '), write(Time), writeln(' seconds').
 
-build_btree_iterate(0, Handle) :- btclose(Handle), !.
+build_btree_iterate(0, _) :- !.
 build_btree_iterate(X, Handle) :- 
 	btinsert(Handle, p(X, X)),
 	Next is X - 1,

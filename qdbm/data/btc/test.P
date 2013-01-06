@@ -3,46 +3,58 @@
 firstset() :- 
 	% parse everything
 	walltime(T1),
-	nqfile_to_btree('/media/Warehouse/BTC_Data/data/data-01.nq', quad),
+	nqfile_to_btree('/media/Warehouse/BTC_Data/data/data-0.nq', quad),
 	walltime(T2),
 	ParseTime is T2 - T1,
 	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
 
-secondset(N) :-
-	%string:concat_atom(['/media/Warehouse/BTC_Data/data/d3/', Name], FName),
-	% parse everything
-	walltime(T1),
-	%nqfile_to_btree(FName, quad),
-	load_split_files(N, '/media/Warehouse/BTC_Data/data/d3'),
-	walltime(T2),
-	ParseTime is T2 - T1,
-	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
+secondset() :-
+        walltime(T1),
+        (nqfile_to_btree('/media/Warehouse/BTC_Data/data/data-1.nq', quad) ; true),
+        walltime(T2),
+        ParseTime is T2 - T1,
+        write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
 
-thirdset(N) :- 
-	% parse everything
-	walltime(T1),
-	load_split_files(N, '/media/Warehouse/BTC_Data/data/d4'),
-	walltime(T2),
-	ParseTime is T2 - T1,
-	write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
+thirdset() :-
+        walltime(T1),
+%        nqfile_to_btree('/media/Warehouse/BTC_Data/data/data-2.nq', quad),
+		(load_split_files(222, '/media/Warehouse/BTC_Data/data/data-2.') ; true),
+        walltime(T2),
+        ParseTime is T2 - T1,
+        write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
+
+fourthset() :-
+        walltime(T1),
+%        nqfile_to_btree('/media/Warehouse/BTC_Data/data/data-3.nq', quad),
+		( load_split_files(187, '/media/Warehouse/BTC_Data/data/data-3.') ; true ),
+        walltime(T2),
+        ParseTime is T2 - T1,
+        write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
+
+fifthset() :-
+        walltime(T1),
+        nqfile_to_btree('/media/Warehouse/BTC_Data/data/data-5.nq', quad),
+        walltime(T2),
+        ParseTime is T2 - T1,
+        write('Processed Datahub files in '), write(ParseTime), writeln(' seconds.').
+
 
 %% projects/btc-2012/datahub/d3/xab
 load_split_files(NumberOfFiles, RootDir) :-
+	writeln('----------------------------------------------------------------------------'),
 	%% compute the name of this file in the sequence.
 	NumberOfFiles @>= 0,
 	ThirdNumber is NumberOfFiles mod 26,
-	writeln('Letter for number.'),
 	letter_for_number(ThirdNumber, ThirdLetter),
 	SecondNumber is NumberOfFiles // 26,
 	letter_for_number(SecondNumber, SecondLetter),
 	%write('x'), write(SecondLetter), writeln(ThirdLetter),
 	%% process this file
 	walltime(T1),
-	writeln('Concat Atom.'),
-	string:concat_atom([RootDir, '/', x, SecondLetter, ThirdLetter, '.clean'], File),
-	write('Enter nqfile_to_btree('), write(File), writeln(').'),
+	string:concat_atom([RootDir, SecondLetter, ThirdLetter], File),
+	%write('Enter nqfile_to_btree('), write(File), writeln(').'),
 	nqfile_to_btree(File, quad),
-	writeln('Exit nqfile_to_btree.'),
+	%writeln('Exit nqfile_to_btree.'),
 	walltime(T2),
 	ParseTime is T2 - T1,
 	write('Processed Datahub file ('), write(File), write(') in '), write(ParseTime), writeln(' seconds.'), nl, nl,
@@ -53,7 +65,8 @@ load_split_files(NumberOfFiles, RootDir) :-
 	gc_heap,
 	gc_tables(_),
 	writeln('Finish GC, Start next iteration.'),
-	load_split_files(Next, RootDir).
+	load_split_files(Next, RootDir),
+	writeln('----------------------------------------------------------------------------').
 
 
 letter_for_number(X, a) :- X @=< 0.
@@ -86,6 +99,7 @@ letter_for_number(25, z).
 
 small_test_load() :- nqfile_to_btree('data-0.nq', quad).
 nqfile_to_btree(FN, PREFIX) :-
+	write('NQFile to BTREE '), writeln(FN),
 	walltime(T1),
 	nqprefix(PREFIX),
 	nqload(FN),
@@ -93,22 +107,30 @@ nqfile_to_btree(FN, PREFIX) :-
 	ParseTime is T2 - T1,
 	write('Parsed files in '), write(ParseTime), writeln(' seconds.'),
 	walltime(T3),
-	btinit(db, Handle),
-	%btstrans(Handle),
+	btinit(db2, Handle),
+	writeln('BT initialzied'),
+	btstrans(Handle),
+	writeln('Started Transaction'),
 	btsize(Handle, InitialSize),
 	(
 		nqnextclean(R),
 		btinsert(Handle, R),
+		btsize(Handle, TSize),
+		PSize is InitialSize - TSize,
+		write(PSize), write('\r'),
 		fail ; true
 	),
-	%btctrans(Handle),
+	writeln('Inserts complete.'),
+	btctrans(Handle),
+	writeln('Committed Transaction'),
 	btsize(Handle, Size),
 	btclose(Handle),
+	writeln('DB Closed.'),
 	walltime(T4),
 	BuildTime is T4 - T3,
 	Added is Size - InitialSize,
 	write('Added '), write(Added), writeln(' entries.'),
-	write('Building Time: '), write(BuildTime), writeln(' seconds.'), statistics, nl, nl.
+	write('Building Time: '), write(BuildTime), writeln(' seconds.'), nl, nl.
 
 nqfile_to_wc(FN, PREFIX) :-
 	nqprefix(PREFIX),
