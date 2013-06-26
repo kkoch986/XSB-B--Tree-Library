@@ -191,7 +191,7 @@ handle_error(_,0) :- !.
 handle_error(H,E) :- print_error(E), bt_error_message(H,ERR), writeln(ERR), !, fail.
 
 
-%%%% MAKE: (may be outdated, see make.P)
+%%%% MAKE
 
 :- import platform/1 from shell.
 :- import misc_error/1 from error_handler.
@@ -208,7 +208,8 @@ make:-
 
 make_darwin() :- 
 	writeln('darwin'),
-	xsb_configuration(packagesdir,PkgPath),
+	%% xsb_configuration(packagesdir,PkgPath),
+	PkgPath = '.',
 	clean,
 	% 1) compile bt_cp.cpp
 	shell(['gcc -o  ',PkgPath, '/bt_cp.so -shared ',PkgPath, '/bt_cp.cpp -lkyotocabinet -lstdc++ -lz -lpthread -lm -lc -B/usr/local/lib -fPIC']),
@@ -217,7 +218,8 @@ make_darwin() :-
 
 make_linux() :-
 	writeln('linux'),
-	xsb_configuration(packagesdir,PkgPath),
+	%% xsb_configuration(packagesdir,PkgPath),
+	PkgPath = '.',
 	clean,
 	% 1) compile bt_cp.cpp
 	shell(['gcc -s -o  ',PkgPath, '/bt_cp.so -shared  ',PkgPath, '/bt_cp.cpp -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -B/usr/local/lib -fPIC']),

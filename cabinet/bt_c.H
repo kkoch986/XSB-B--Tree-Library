@@ -1,4 +1,12 @@
-:- ldoption('-lqdbm -B/usr/local/lib /home/ken/XSB/packages/bt_cp.so /home/ken/XSB/packages/bt_cp.cpp').
+%% :-  %xsb_configuration(packagesdir,PkgPath),
+%% 	PkgPath = '.',
+%% 	atom_concat(' -lkyotocabinet -B/usr/local/lib', PkgPath, Part1),
+%% 	atom_concat(Part1, '/bt_cp.so ', Part2),
+%% 	atom_concat(Part2, PkgPath, Part3),
+%% 	atom_concat(Part3, '/bt_cp.cpp', Part4),
+%% 	write('test: '), writeln(Part4),
+%% 	ldoption(Part4).
+:- ldoption(' -lkyotocabinet -B/usr/local/lib bt_cp.cpp').
 
 
 %% new create stuff
