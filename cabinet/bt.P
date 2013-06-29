@@ -18,6 +18,16 @@
 
 :- import numbervars/3, unnumbervars/3 from num_vars.
 
+
+:- export btcreate/3, btcreate/4.
+:- export btinit/2, btclose/1, btsize/2.
+:- export btname/2, btpredname/2, btarity/2, btindexon/2.
+:- export btinsert/2, btget/3, btgetnext/2, btgetall/2, btgetall_rev/2.
+:- export btminit/1, btmfirst/1, btmlast/1, btmnext/1, btmprev/1, btmkey/2, btmval/2.
+:- export btstrans/1, btctrans/1, btatrans/1.
+:- export term_expansion/2.
+
+
 % this function CREATES a new directory structure for the provided predicate and creates 
 % b+ tree and meta database inside it.
 % btcreate(+DBName, +Pred, +Arity, +Argument).
@@ -222,6 +232,22 @@ make_linux() :-
 	PkgPath = '.',
 	clean,
 	% 1) compile bt_cp.cpp
-	shell(['gcc -s -o  ',PkgPath, '/bt_cp.so -shared  ',PkgPath, '/bt_cp.cpp -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -B/usr/local/lib -fPIC']),
+	shell(['gcc -s -o  ',PkgPath, '/libbtc.so -shared  ',PkgPath, '/bt_cp.cpp -lkyotocabinet -lstdc++ -lz -lrt -lpthread -lm -lc -B/usr/local/lib -fPIC']),
+	shell(['touch /usr/lib/libbtc.so']),
+	shell(['unlink /usr/lib/libbtc.so']),
+	shell(['mv ',PkgPath, '/libbtc.so /usr/lib']),
 	% touch the bt_c fiel so it is reloaded
 	shell(['touch ', PkgPath, '/bt_c.c']).
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% :- assert(':-'(my_assert_hook(p(A,B,C)),btinit(testdb, H), btinsert(H, p(A,B,C)), btclose(H), fail)).
+
+%% :- import add_xsb_hook/1, xsb_assert_hook/1 from xsb_hook.
+%% :- add_xsb_hook(xsb_assert_hook(my_assert_hook(_))).

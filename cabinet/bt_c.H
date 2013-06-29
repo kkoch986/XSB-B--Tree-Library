@@ -6,7 +6,7 @@
 %% 	atom_concat(Part3, '/bt_cp.cpp', Part4),
 %% 	write('test: '), writeln(Part4),
 %% 	ldoption(Part4).
-:- ldoption(' -lkyotocabinet -B/usr/local/lib bt_cp.cpp').
+:- ldoption(' -lkyotocabinet -B/usr/local/lib -lbtc -L ./ ').
 
 
 %% new create stuff
