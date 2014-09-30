@@ -9,7 +9,7 @@ Still a major work in progress, using this file to keep track of changes to XSB 
 
 These are changes that need to be made to XSB and compiled using ./makexsb.
 
-1. __emu/io_builtins_xsb.c__ \[Line 1898\]
+1. __emu/io_builtins_xsb.c__ \[Above `int call_conv write_canonical_term_rec(CTXTdeclc Cell prologterm, int letter_flag)`\]
 
 Add:
 
