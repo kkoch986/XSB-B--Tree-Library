@@ -96,9 +96,11 @@ letter_for_number(23, x).
 letter_for_number(24, y).
 letter_for_number(25, z).
 
+transaction_limit(100).
 
 small_test_load() :- nqfile_to_btree('data-0.nq', quad).
 nqfile_to_btree(FN, PREFIX) :-
+	transaction_limit(TLimit),
 	write('NQFile to BTREE '), writeln(FN),
 	walltime(T1),
 	nqprefix(PREFIX),
@@ -118,6 +120,18 @@ nqfile_to_btree(FN, PREFIX) :-
 		btsize(Handle, TSize),
 		PSize is InitialSize - TSize,
 		write(PSize), write('\r'),
+		(
+			( 
+				MS is PSize mod TLimit, 
+				MS = 0, 
+				write('Refreshing transaction...'), 
+				( 
+					( btctrans(Handle), btstrans(Handle), writeln('done.')  ) 
+					; writeln('failed.')
+				) 
+			) ; 
+			true 
+		),
 		fail ; true
 	),
 	writeln('Inserts complete.'),
